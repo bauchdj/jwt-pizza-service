@@ -1,22 +1,30 @@
 {
-  "name": "jwt-pizza-service",
-  "description": "Backend service for making JWT pizzas",
-  "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "start": "cd src && node index.js"
-  },
-  "license": "MIT",
-  "dependencies": {
-    "bcrypt": "^5.1.1",
-    "express": "^4.19.2",
-    "jsonwebtoken": "^9.0.2",
-    "mysql2": "^3.9.7"
-  },
-  "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^8.21.0",
-    "@typescript-eslint/parser": "^8.21.0",
-    "eslint": "^9.19.0",
-    "typescript": "^5.7.3"
-  }
+	"name": "jwt-pizza-service",
+	"description": "Backend service for making JWT pizzas",
+	"version": "1.0.0",
+	"main": "index.js",
+	"scripts": {
+		"start": "cd src && node index.js"
+	},
+	"license": "MIT",
+	"dependencies": {
+		"bcrypt": "^5.1.1",
+		"express": "^4.21.2",
+		"jsonwebtoken": "^9.0.2",
+		"mysql2": "^3.12.0"
+	},
+	"devDependencies": {
+		"@typescript-eslint/eslint-plugin": "^8.21.0",
+		"@typescript-eslint/parser": "^8.21.0",
+		"eslint": "^9.19.0",
+		"ts-migrate": "^0.1.35",
+		"typescript": "^5.7.3"
+	},
+	"overrides": {
+		"braces": "^3.0.2",
+		"glob": "^11.0.1",
+		"jscodeshift": "^0.13.1",
+		"micromatch": "^4.0.7",
+		"rimraf": "^4.4.1"
+	}
 }
