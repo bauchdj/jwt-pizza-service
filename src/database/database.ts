@@ -3,9 +3,11 @@ import mysql from "mysql2/promise";
 import config from "../config.js";
 import { StatusCodeError } from "../endpointHelper.js";
 import { Role } from "../model/model.js";
-import dbModel from "./dbModel.js";
+import { Item, tableCreateStatements } from "./dbModel.js";
 
 class DB {
+	initialized;
+
 	constructor() {
 		this.initialized = this.initializeDatabase();
 	}
@@ -13,17 +15,21 @@ class DB {
 	async getMenu() {
 		const connection = await this.getConnection();
 		try {
-			const rows = await this.query(connection, `SELECT * FROM menu`);
+			const rows = await this.query<mysql.RowDataPacket[]>(
+				connection,
+				`SELECT * FROM menu`,
+				undefined
+			);
 			return rows;
 		} finally {
 			connection.end();
 		}
 	}
 
-	async addMenuItem(item) {
+	async addMenuItem(item: Item) {
 		const connection = await this.getConnection();
 		try {
-			const addResult = await this.query(
+			const addResult = await this.query<mysql.ResultSetHeader>(
 				connection,
 				`INSERT INTO menu (title, description, image, price) VALUES (?, ?, ?, ?)`,
 				[item.title, item.description, item.image, item.price]
@@ -34,12 +40,13 @@ class DB {
 		}
 	}
 
+	// @ts-expect-error TS(7006): Parameter 'user' implicitly has an 'any' type.
 	async addUser(user) {
 		const connection = await this.getConnection();
 		try {
 			const hashedPassword = await bcrypt.hash(user.password, 10);
 
-			const userResult = await this.query(
+			const userResult = await this.query<mysql.ResultSetHeader>(
 				connection,
 				`INSERT INTO user (name, email, password) VALUES (?, ?, ?)`,
 				[user.name, user.email, hashedPassword]
@@ -77,10 +84,11 @@ class DB {
 		}
 	}
 
+	// @ts-expect-error TS(7006): Parameter 'email' implicitly has an 'any' type.
 	async getUser(email, password) {
 		const connection = await this.getConnection();
 		try {
-			const userResult = await this.query(
+			const userResult = await this.query<mysql.RowDataPacket[]>(
 				connection,
 				`SELECT * FROM user WHERE email=?`,
 				[email]
@@ -95,6 +103,7 @@ class DB {
 				`SELECT * FROM userRole WHERE userId=?`,
 				[user.id]
 			);
+			// @ts-expect-error TS(7006): Parameter 'r' implicitly has an 'any' type.
 			const roles = roleResult.map((r) => {
 				return { objectId: r.objectId || undefined, role: r.role };
 			});
@@ -105,6 +114,7 @@ class DB {
 		}
 	}
 
+	// @ts-expect-error TS(7006): Parameter 'userId' implicitly has an 'any' type.
 	async updateUser(userId, email, password) {
 		const connection = await this.getConnection();
 		try {
@@ -120,6 +130,7 @@ class DB {
 				const query = `UPDATE user SET ${params.join(
 					", "
 				)} WHERE id=${userId}`;
+				// @ts-expect-error TS(2554): Expected 3 arguments, but got 2.
 				await this.query(connection, query);
 			}
 			return this.getUser(email, password);
@@ -128,6 +139,7 @@ class DB {
 		}
 	}
 
+	// @ts-expect-error TS(7006): Parameter 'userId' implicitly has an 'any' type.
 	async loginUser(userId, token) {
 		token = this.getTokenSignature(token);
 		const connection = await this.getConnection();
@@ -142,11 +154,12 @@ class DB {
 		}
 	}
 
+	// @ts-expect-error TS(7006): Parameter 'token' implicitly has an 'any' type.
 	async isLoggedIn(token) {
 		token = this.getTokenSignature(token);
 		const connection = await this.getConnection();
 		try {
-			const authResult = await this.query(
+			const authResult = await this.query<mysql.RowDataPacket[]>(
 				connection,
 				`SELECT userId FROM auth WHERE token=?`,
 				[token]
@@ -157,6 +170,7 @@ class DB {
 		}
 	}
 
+	// @ts-expect-error TS(7006): Parameter 'token' implicitly has an 'any' type.
 	async logoutUser(token) {
 		token = this.getTokenSignature(token);
 		const connection = await this.getConnection();
@@ -169,11 +183,12 @@ class DB {
 		}
 	}
 
+	// @ts-expect-error TS(7006): Parameter 'user' implicitly has an 'any' type.
 	async getOrders(user, page = 1) {
 		const connection = await this.getConnection();
 		try {
 			const offset = this.getOffset(page, config.db.listPerPage);
-			const orders = await this.query(
+			const orders = await this.query<mysql.RowDataPacket[]>(
 				connection,
 				`SELECT id, franchiseId, storeId, date FROM dinerOrder WHERE dinerId=? LIMIT ${offset},${config.db.listPerPage}`,
 				[user.id]
@@ -192,10 +207,11 @@ class DB {
 		}
 	}
 
+	// @ts-expect-error TS(7006): Parameter 'user' implicitly has an 'any' type.
 	async addDinerOrder(user, order) {
 		const connection = await this.getConnection();
 		try {
-			const orderResult = await this.query(
+			const orderResult = await this.query<mysql.ResultSetHeader>(
 				connection,
 				`INSERT INTO dinerOrder (dinerId, franchiseId, storeId, date) VALUES (?, ?, ?, now())`,
 				[user.id, order.franchiseId, order.storeId]
@@ -220,11 +236,12 @@ class DB {
 		}
 	}
 
+	// @ts-expect-error TS(7006): Parameter 'franchise' implicitly has an 'any' type... Remove this comment to see the full error message
 	async createFranchise(franchise) {
 		const connection = await this.getConnection();
 		try {
 			for (const admin of franchise.admins) {
-				const adminUser = await this.query(
+				const adminUser = await this.query<mysql.RowDataPacket[]>(
 					connection,
 					`SELECT id, name FROM user WHERE email=?`,
 					[admin.email]
@@ -239,7 +256,7 @@ class DB {
 				admin.name = adminUser[0].name;
 			}
 
-			const franchiseResult = await this.query(
+			const franchiseResult = await this.query<mysql.ResultSetHeader>(
 				connection,
 				`INSERT INTO franchise (name) VALUES (?)`,
 				[franchise.name]
@@ -260,6 +277,7 @@ class DB {
 		}
 	}
 
+	// @ts-expect-error TS(7006): Parameter 'franchiseId' implicitly has an 'any' ty... Remove this comment to see the full error message
 	async deleteFranchise(franchiseId) {
 		const connection = await this.getConnection();
 		try {
@@ -290,12 +308,14 @@ class DB {
 		}
 	}
 
+	// @ts-expect-error TS(7006): Parameter 'authUser' implicitly has an 'any' type.
 	async getFranchises(authUser) {
 		const connection = await this.getConnection();
 		try {
-			const franchises = await this.query(
+			const franchises = await this.query<mysql.RowDataPacket[]>(
 				connection,
-				`SELECT id, name FROM franchise`
+				`SELECT id, name FROM franchise`,
+				undefined
 			);
 			for (const franchise of franchises) {
 				if (authUser?.isRole(Role.Admin)) {
@@ -314,10 +334,11 @@ class DB {
 		}
 	}
 
+	// @ts-expect-error TS(7006): Parameter 'userId' implicitly has an 'any' type.
 	async getUserFranchises(userId) {
 		const connection = await this.getConnection();
 		try {
-			let franchiseIds = await this.query(
+			let franchiseIds = await this.query<mysql.RowDataPacket[]>(
 				connection,
 				`SELECT objectId FROM userRole WHERE role='franchisee' AND userId=?`,
 				[userId]
@@ -327,11 +348,12 @@ class DB {
 			}
 
 			franchiseIds = franchiseIds.map((v) => v.objectId);
-			const franchises = await this.query(
+			const franchises = await this.query<mysql.RowDataPacket[]>(
 				connection,
 				`SELECT id, name FROM franchise WHERE id in (${franchiseIds.join(
 					","
-				)})`
+				)})`,
+				undefined
 			);
 			for (const franchise of franchises) {
 				await this.getFranchise(franchise);
@@ -342,6 +364,7 @@ class DB {
 		}
 	}
 
+	// @ts-expect-error TS(7006): Parameter 'franchise' implicitly has an 'any' type... Remove this comment to see the full error message
 	async getFranchise(franchise) {
 		const connection = await this.getConnection();
 		try {
@@ -363,10 +386,11 @@ class DB {
 		}
 	}
 
+	// @ts-expect-error TS(7006): Parameter 'franchiseId' implicitly has an 'any' ty... Remove this comment to see the full error message
 	async createStore(franchiseId, store) {
 		const connection = await this.getConnection();
 		try {
-			const insertResult = await this.query(
+			const insertResult = await this.query<mysql.ResultSetHeader>(
 				connection,
 				`INSERT INTO store (franchiseId, name) VALUES (?, ?)`,
 				[franchiseId, store.name]
@@ -377,6 +401,7 @@ class DB {
 		}
 	}
 
+	// @ts-expect-error TS(7006): Parameter 'franchiseId' implicitly has an 'any' ty... Remove this comment to see the full error message
 	async deleteStore(franchiseId, storeId) {
 		const connection = await this.getConnection();
 		try {
@@ -390,10 +415,13 @@ class DB {
 		}
 	}
 
+	// @ts-expect-error TS(7006): Parameter 'listPerPage' implicitly has an 'any' ty... Remove this comment to see the full error message
 	getOffset(currentPage = 1, listPerPage) {
+		// @ts-expect-error TS(2363): The right-hand side of an arithmetic operation mus... Remove this comment to see the full error message
 		return (currentPage - 1) * [listPerPage];
 	}
 
+	// @ts-expect-error TS(7006): Parameter 'token' implicitly has an 'any' type.
 	getTokenSignature(token) {
 		const parts = token.split(".");
 		if (parts.length > 2) {
@@ -402,13 +430,22 @@ class DB {
 		return "";
 	}
 
-	async query(connection, sql, params) {
-		const [results] = await connection.execute(sql, params);
+	async query<T extends mysql.QueryResult>(
+		connection: mysql.Connection,
+		sql: string,
+		params: any[] | undefined
+	) {
+		const [results] = await connection.execute<T>(sql, params);
 		return results;
 	}
 
-	async getID(connection, key, value, table) {
-		const [rows] = await connection.execute(
+	async getID(
+		connection: mysql.Connection,
+		key: string,
+		value: string,
+		table: string
+	) {
+		const [rows] = await connection.execute<mysql.RowDataPacket[]>(
 			`SELECT id FROM ${table} WHERE ${key}=?`,
 			[value]
 		);
@@ -458,7 +495,7 @@ class DB {
 					console.log("Successfully created database");
 				}
 
-				for (const statement of dbModel.tableCreateStatements) {
+				for (const statement of tableCreateStatements) {
 					await connection.query(statement);
 				}
 
@@ -475,9 +512,11 @@ class DB {
 				connection.end();
 			}
 		} catch (err) {
+			// if (!(err instanceof Error)) return;
 			console.error(
 				JSON.stringify({
 					message: "Error initializing database",
+					// @ts-expect-error TS(2571): Object is of type 'unknown'.
 					exception: err.message,
 					connection: config.db.connection,
 				})
@@ -485,8 +524,8 @@ class DB {
 		}
 	}
 
-	async checkDatabaseExists(connection) {
-		const [rows] = await connection.execute(
+	async checkDatabaseExists(connection: mysql.Connection) {
+		const [rows] = await connection.execute<mysql.RowDataPacket[]>(
 			`SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?`,
 			[config.db.connection.database]
 		);

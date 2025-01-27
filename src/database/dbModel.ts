@@ -62,4 +62,11 @@ const tableCreateStatements = [
   )`,
 ];
 
-export default { tableCreateStatements };
+interface Item {
+	title: string;
+	description: string;
+	image: string;
+	price: number;
+}
+
+export { Item, tableCreateStatements };

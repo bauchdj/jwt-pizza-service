@@ -86,6 +86,7 @@ orderRouter.endpoints = [
 // getMenu
 orderRouter.get(
 	"/menu",
+	// @ts-expect-error TS(7006): Parameter 'req' implicitly has an 'any' type.
 	asyncHandler(async (req, res) => {
 		res.send(await DB.getMenu());
 	})
@@ -95,6 +96,7 @@ orderRouter.get(
 orderRouter.put(
 	"/menu",
 	authRouter.authenticateToken,
+	// @ts-expect-error TS(7006): Parameter 'req' implicitly has an 'any' type.
 	asyncHandler(async (req, res) => {
 		if (!req.user.isRole(Role.Admin)) {
 			throw new StatusCodeError("unable to add menu item", 403);
@@ -110,6 +112,7 @@ orderRouter.put(
 orderRouter.get(
 	"/",
 	authRouter.authenticateToken,
+	// @ts-expect-error TS(7006): Parameter 'req' implicitly has an 'any' type.
 	asyncHandler(async (req, res) => {
 		res.json(await DB.getOrders(req.user, req.query.page));
 	})
@@ -119,6 +122,7 @@ orderRouter.get(
 orderRouter.post(
 	"/",
 	authRouter.authenticateToken,
+	// @ts-expect-error TS(7006): Parameter 'req' implicitly has an 'any' type.
 	asyncHandler(async (req, res) => {
 		const orderReq = req.body;
 		const order = await DB.addDinerOrder(req.user, orderReq);

@@ -60,6 +60,7 @@ authRouter.endpoints = [
 	},
 ];
 
+// @ts-expect-error TS(7006): Parameter 'req' implicitly has an 'any' type.
 async function setAuthUser(req, res, next) {
 	const token = readAuthToken(req);
 	if (token) {
@@ -67,7 +68,9 @@ async function setAuthUser(req, res, next) {
 			if (await DB.isLoggedIn(token)) {
 				// Check the database to make sure the token is valid.
 				req.user = jwt.verify(token, config.jwtSecret);
+				// @ts-expect-error TS(7006): Parameter 'role' implicitly has an 'any' type.
 				req.user.isRole = (role) =>
+					// @ts-expect-error TS(7006): Parameter 'r' implicitly has an 'any' type.
 					!!req.user.roles.find((r) => r.role === role);
 			}
 		} catch {
@@ -78,6 +81,7 @@ async function setAuthUser(req, res, next) {
 }
 
 // Authenticate token
+// @ts-expect-error TS(7006): Parameter 'req' implicitly has an 'any' type.
 authRouter.authenticateToken = (req, res, next) => {
 	if (!req.user) {
 		return res.status(401).send({ message: "unauthorized" });
@@ -88,6 +92,7 @@ authRouter.authenticateToken = (req, res, next) => {
 // register
 authRouter.post(
 	"/",
+	// @ts-expect-error TS(7006): Parameter 'req' implicitly has an 'any' type.
 	asyncHandler(async (req, res) => {
 		const { name, email, password } = req.body;
 		if (!name || !email || !password) {
@@ -109,6 +114,7 @@ authRouter.post(
 // login
 authRouter.put(
 	"/",
+	// @ts-expect-error TS(7006): Parameter 'req' implicitly has an 'any' type.
 	asyncHandler(async (req, res) => {
 		const { email, password } = req.body;
 		const user = await DB.getUser(email, password);
@@ -121,6 +127,7 @@ authRouter.put(
 authRouter.delete(
 	"/",
 	authRouter.authenticateToken,
+	// @ts-expect-error TS(7006): Parameter 'req' implicitly has an 'any' type.
 	asyncHandler(async (req, res) => {
 		await clearAuth(req);
 		res.json({ message: "logout successful" });
@@ -131,6 +138,7 @@ authRouter.delete(
 authRouter.put(
 	"/:userId",
 	authRouter.authenticateToken,
+	// @ts-expect-error TS(7006): Parameter 'req' implicitly has an 'any' type.
 	asyncHandler(async (req, res) => {
 		const { email, password } = req.body;
 		const userId = Number(req.params.userId);
@@ -144,12 +152,14 @@ authRouter.put(
 	})
 );
 
+// @ts-expect-error TS(7006): Parameter 'user' implicitly has an 'any' type.
 async function setAuth(user) {
 	const token = jwt.sign(user, config.jwtSecret);
 	await DB.loginUser(user.id, token);
 	return token;
 }
 
+// @ts-expect-error TS(7006): Parameter 'req' implicitly has an 'any' type.
 async function clearAuth(req) {
 	const token = readAuthToken(req);
 	if (token) {
@@ -157,6 +167,7 @@ async function clearAuth(req) {
 	}
 }
 
+// @ts-expect-error TS(7006): Parameter 'req' implicitly has an 'any' type.
 function readAuthToken(req) {
 	const authHeader = req.headers.authorization;
 	if (authHeader) {

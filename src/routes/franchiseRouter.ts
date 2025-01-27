@@ -80,6 +80,7 @@ franchiseRouter.endpoints = [
 // getFranchises
 franchiseRouter.get(
 	"/",
+	// @ts-expect-error TS(7006): Parameter 'req' implicitly has an 'any' type.
 	asyncHandler(async (req, res) => {
 		res.json(await DB.getFranchises(req.user));
 	})
@@ -89,6 +90,7 @@ franchiseRouter.get(
 franchiseRouter.get(
 	"/:userId",
 	authRouter.authenticateToken,
+	// @ts-expect-error TS(7006): Parameter 'req' implicitly has an 'any' type.
 	asyncHandler(async (req, res) => {
 		let result = [];
 		const userId = Number(req.params.userId);
@@ -104,6 +106,7 @@ franchiseRouter.get(
 franchiseRouter.post(
 	"/",
 	authRouter.authenticateToken,
+	// @ts-expect-error TS(7006): Parameter 'req' implicitly has an 'any' type.
 	asyncHandler(async (req, res) => {
 		if (!req.user.isRole(Role.Admin)) {
 			throw new StatusCodeError("unable to create a franchise", 403);
@@ -117,6 +120,7 @@ franchiseRouter.post(
 // deleteFranchise
 franchiseRouter.delete(
 	"/:franchiseId",
+	// @ts-expect-error TS(7006): Parameter 'req' implicitly has an 'any' type.
 	asyncHandler(async (req, res) => {
 		if (!req.user.isRole(Role.Admin)) {
 			throw new StatusCodeError("unable to delete a franchise", 403);
@@ -132,12 +136,14 @@ franchiseRouter.delete(
 franchiseRouter.post(
 	"/:franchiseId/store",
 	authRouter.authenticateToken,
+	// @ts-expect-error TS(7006): Parameter 'req' implicitly has an 'any' type.
 	asyncHandler(async (req, res) => {
 		const franchiseId = Number(req.params.franchiseId);
 		const franchise = await DB.getFranchise({ id: franchiseId });
 		if (
 			!franchise ||
 			(!req.user.isRole(Role.Admin) &&
+				// @ts-expect-error TS(7006): Parameter 'admin' implicitly has an 'any' type.
 				!franchise.admins.some((admin) => admin.id === req.user.id))
 		) {
 			throw new StatusCodeError("unable to create a store", 403);
@@ -151,12 +157,14 @@ franchiseRouter.post(
 franchiseRouter.delete(
 	"/:franchiseId/store/:storeId",
 	authRouter.authenticateToken,
+	// @ts-expect-error TS(7006): Parameter 'req' implicitly has an 'any' type.
 	asyncHandler(async (req, res) => {
 		const franchiseId = Number(req.params.franchiseId);
 		const franchise = await DB.getFranchise({ id: franchiseId });
 		if (
 			!franchise ||
 			(!req.user.isRole(Role.Admin) &&
+				// @ts-expect-error TS(7006): Parameter 'admin' implicitly has an 'any' type.
 				!franchise.admins.some((admin) => admin.id === req.user.id))
 		) {
 			throw new StatusCodeError("unable to delete a store", 403);
