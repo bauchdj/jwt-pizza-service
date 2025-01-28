@@ -1,10 +1,12 @@
-import express from "express";
+import express, { Response } from "express";
 import config from "../config.js";
-import { DB, Role } from "../database/database.js";
+import { DB } from "../database/database.js";
 import { asyncHandler, StatusCodeError } from "../endpointHelper.js";
+import { Role } from "../model/model.js";
 import { authRouter } from "./authRouter.js";
+import { ExtendedRouter, UserRequest } from "./RouterModels.js";
 
-const orderRouter = express.Router();
+const orderRouter: ExtendedRouter = express.Router() as ExtendedRouter;
 
 orderRouter.endpoints = [
 	{
@@ -69,7 +71,7 @@ orderRouter.endpoints = [
 		method: "POST",
 		path: "/api/order",
 		requiresAuth: true,
-		description: "Create a order for the authenticated user",
+		description: "Create an order for the authenticated user",
 		example: `curl -X POST localhost:3000/api/order -H 'Content-Type: application/json' -d '{"franchiseId": 1, "storeId":1, "items":[{ "menuId": 1, "description": "Veggie", "price": 0.05 }]}'  -H 'Authorization: Bearer tttttt'`,
 		response: {
 			order: {
@@ -86,18 +88,16 @@ orderRouter.endpoints = [
 // getMenu
 orderRouter.get(
 	"/menu",
-	// @ts-expect-error TS(7006): Parameter 'req' implicitly has an 'any' type.
-	asyncHandler(async (req, res) => {
+	asyncHandler((async (req: UserRequest, res: Response) => {
 		res.send(await DB.getMenu());
-	})
+	}) as unknown as express.RequestHandler)
 );
 
 // addMenuItem
 orderRouter.put(
 	"/menu",
 	authRouter.authenticateToken,
-	// @ts-expect-error TS(7006): Parameter 'req' implicitly has an 'any' type.
-	asyncHandler(async (req, res) => {
+	asyncHandler((async (req: UserRequest, res: Response) => {
 		if (!req.user.isRole(Role.Admin)) {
 			throw new StatusCodeError("unable to add menu item", 403);
 		}
@@ -105,28 +105,30 @@ orderRouter.put(
 		const addMenuItemReq = req.body;
 		await DB.addMenuItem(addMenuItemReq);
 		res.send(await DB.getMenu());
-	})
+	}) as unknown as express.RequestHandler)
 );
 
 // getOrders
 orderRouter.get(
 	"/",
 	authRouter.authenticateToken,
-	// @ts-expect-error TS(7006): Parameter 'req' implicitly has an 'any' type.
-	asyncHandler(async (req, res) => {
-		res.json(await DB.getOrders(req.user, req.query.page));
-	})
+	asyncHandler((async (req: UserRequest, res: Response) => {
+		const page = req.query.page
+			? parseInt(req.query.page as string, 10)
+			: undefined;
+		res.json(await DB.getOrders(req.user, page));
+	}) as unknown as express.RequestHandler)
 );
 
 // createOrder
 orderRouter.post(
 	"/",
 	authRouter.authenticateToken,
-	// @ts-expect-error TS(7006): Parameter 'req' implicitly has an 'any' type.
-	asyncHandler(async (req, res) => {
+	asyncHandler((async (req: UserRequest, res: Response) => {
 		const orderReq = req.body;
 		const order = await DB.addDinerOrder(req.user, orderReq);
-		const r = await fetch(`${config.factory.url}/api/order`, {
+
+		const response = await fetch(`${config.factory.url}/api/order`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
@@ -141,20 +143,23 @@ orderRouter.post(
 				order,
 			}),
 		});
-		const j = await r.json();
-		if (r.ok) {
+
+		const jsonResponse = await response.json();
+
+		if (response.ok) {
 			res.send({
 				order,
-				reportSlowPizzaToFactoryUrl: j.reportUrl,
-				jwt: j.jwt,
+				reportSlowPizzaToFactoryUrl: jsonResponse.reportUrl,
+				jwt: jsonResponse.jwt,
 			});
 		} else {
 			res.status(500).send({
 				message: "Failed to fulfill order at factory",
-				reportPizzaCreationErrorToPizzaFactoryUrl: j.reportUrl,
+				reportPizzaCreationErrorToPizzaFactoryUrl:
+					jsonResponse.reportUrl,
 			});
 		}
-	})
+	}) as unknown as express.RequestHandler)
 );
 
 export default orderRouter;
