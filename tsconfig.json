@@ -1,19 +1,19 @@
 {
 	"compilerOptions": {
-		"target": "ES2017", // Set the target ECMAScript version
-		"module": "NodeNext", // Module system, typically used for Node.js
-		"moduleResolution": "nodenext",
-		"outDir": "./dist", // Output directory for compiled files
-		"rootDir": "./src", // Root directory of TypeScript files
+		"target": "ES2022", // Specify ECMAScript target version
+		"module": "NodeNext", // Specify module code generation
 		"strict": true, // Enable all strict type-checking options
-		"esModuleInterop": true, // Allow compatibility with non-ES modules
+		"esModuleInterop": true, // Enable compatibility with ES modules
 		"skipLibCheck": true, // Skip type checking of declaration files
-		"forceConsistentCasingInFileNames": true // Enforce consistent file name casing
+		"forceConsistentCasingInFileNames": true, // Disallow inconsistently-cased references to the same file
+		"outDir": "./dist", // Output directory for compiled files
+		"rootDir": "./src", // Source directory
+		"moduleResolution": "NodeNext", // Specify module resolution strategy
+		"resolveJsonModule": true, // Allow importing JSON modules
+		"isolatedModules": true, // Ensure each file can be transpiled independently
+		"noEmitOnError": true, // Do not emit files if there are type errors
+		"sourceMap": true // Generate corresponding .map files
 	},
-	"include": [
-		"src/**/*.ts" // Include all TypeScript files in the src folder
-	],
-	"exclude": [
-		"node_modules" // Exclude node_modules from compilation
-	]
+	"include": ["src/**/*"], // Include all files in the src directory
+	"exclude": ["node_modules", "dist"] // Exclude node_modules and dist directories
 }

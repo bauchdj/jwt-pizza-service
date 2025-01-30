@@ -65,15 +65,16 @@ interface OrderItem {
 	price: number;
 }
 
-export {
+export type {
 	DinerOrder,
 	Franchise,
 	FranchiseAdmin,
 	MenuItem,
 	OrderItem,
-	Role,
 	RoleValueType,
 	Store,
 	User,
 	UserRole,
 };
+
+export { Role };

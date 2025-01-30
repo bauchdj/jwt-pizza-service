@@ -1,13 +1,11 @@
 import express, { NextFunction, Request, Response } from "express";
-import { readFile } from "fs/promises";
 import config from "./config.js";
 import { authRouter, setAuthUser } from "./routes/authRouter.js";
 import franchiseRouter from "./routes/franchiseRouter.js";
 import orderRouter from "./routes/orderRouter.js";
-
-// Use an async function to read version data
-const versionData = await readFile(new URL("./version.json", import.meta.url));
-const version = JSON.parse(versionData.toString());
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const version = require("./version.json");
 
 const app = express();
 app.use(express.json());
