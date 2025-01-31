@@ -1,8 +1,5 @@
-/** @jest-config-loader esbuild-register */
-
-import type { Config } from "jest";
-
-const config: Config = {
+/** @type {import('jest').Config} */
+const config = {
 	testEnvironment: "node",
 	testPathIgnorePatterns: ["./dist/"],
 	// preset: "ts-jest",
