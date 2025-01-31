@@ -1,18 +1,16 @@
 {
+	"extends": "@tsconfig/recommended/tsconfig.json",
 	"compilerOptions": {
-		"target": "ES2022", // Specify ECMAScript target version
-		"module": "NodeNext", // Specify module code generation
-		"strict": true, // Enable all strict type-checking options
-		"esModuleInterop": true, // Enable compatibility with ES modules
-		"skipLibCheck": true, // Skip type checking of declaration files
-		"forceConsistentCasingInFileNames": true, // Disallow inconsistently-cased references to the same file
-		"outDir": "./dist", // Output directory for compiled files
-		"rootDir": "./src", // Source directory
-		"moduleResolution": "NodeNext", // Specify module resolution strategy
 		"resolveJsonModule": true, // Allow importing JSON modules
 		"isolatedModules": true, // Ensure each file can be transpiled independently
 		"noEmitOnError": true, // Do not emit files if there are type errors
-		"sourceMap": true // Generate corresponding .map files
+		"sourceMap": true, // Generate corresponding .map files
+		"outDir": "./dist", // Output directory for compiled files
+		"rootDir": "./", // Source directory
+		"baseUrl": "./",
+		"paths": {
+			"@src/*": ["src/*"]
+		}
 	},
 	"include": ["src/**/*"], // Include all files in the src directory
 	"exclude": ["node_modules", "dist"] // Exclude node_modules and dist directories

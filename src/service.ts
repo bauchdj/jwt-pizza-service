@@ -3,9 +3,7 @@ import config from "./config.js";
 import { authRouter, setAuthUser } from "./routes/authRouter.js";
 import franchiseRouter from "./routes/franchiseRouter.js";
 import orderRouter from "./routes/orderRouter.js";
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-const version = require("./version.json");
+import version from "./version.json";
 
 const app = express();
 app.use(express.json());
