@@ -15,9 +15,11 @@ import {
 import dbModel from "./dbModel.js";
 
 class DB {
+	config: typeof config;
 	initialized: Promise<void>;
 
-	constructor() {
+	constructor(dbConfig = config) {
+		this.config = dbConfig;
 		this.initialized = this.initializeDatabase();
 	}
 
@@ -200,10 +202,10 @@ class DB {
 	}> {
 		const connection = await this.getConnection();
 		try {
-			const offset = this.getOffset(page, config.db.listPerPage);
+			const offset = this.getOffset(page, this.config.db.listPerPage);
 			const orders = await this.query<mysql.RowDataPacket[]>(
 				connection,
-				`SELECT id, franchiseId, storeId, date FROM dinerOrder WHERE dinerId=? LIMIT ${offset},${config.db.listPerPage}`,
+				`SELECT id, franchiseId, storeId, date FROM dinerOrder WHERE dinerId=? LIMIT ${offset},${this.config.db.listPerPage}`,
 				[user.id]
 			);
 			for (const order of orders) {
@@ -467,14 +469,14 @@ class DB {
 
 	async _getConnection(setUse = true) {
 		const connection = await mysql.createConnection({
-			host: config.db.connection.host,
-			user: config.db.connection.user,
-			password: config.db.connection.password,
-			connectTimeout: config.db.connection.connectTimeout,
+			host: this.config.db.connection.host,
+			user: this.config.db.connection.user,
+			password: this.config.db.connection.password,
+			connectTimeout: this.config.db.connection.connectTimeout,
 			decimalNumbers: true,
 		});
 		if (setUse) {
-			await connection.query(`USE ${config.db.connection.database}`);
+			await connection.query(`USE ${this.config.db.connection.database}`);
 		}
 		return connection;
 	}
@@ -491,9 +493,11 @@ class DB {
 				);
 
 				await connection.query(
-					`CREATE DATABASE IF NOT EXISTS ${config.db.connection.database}`
+					`CREATE DATABASE IF NOT EXISTS ${this.config.db.connection.database}`
 				);
-				await connection.query(`USE ${config.db.connection.database}`);
+				await connection.query(
+					`USE ${this.config.db.connection.database}`
+				);
 
 				if (!dbExists) {
 					console.log("Successfully created database");
@@ -523,7 +527,7 @@ class DB {
 					message: "Error initializing database",
 					// @ts-expect-error TS(2571): Object is of type 'unknown'.
 					exception: err.message,
-					connection: config.db.connection,
+					connection: this.config.db.connection,
 				})
 			);
 		}
@@ -532,11 +536,11 @@ class DB {
 	async checkDatabaseExists(connection: mysql.Connection) {
 		const [rows] = await connection.execute<mysql.RowDataPacket[]>(
 			`SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?`,
-			[config.db.connection.database]
+			[this.config.db.connection.database]
 		);
 		return rows.length > 0;
 	}
 }
 
 const db = new DB();
-export { db as DB };
+export { db, DB };

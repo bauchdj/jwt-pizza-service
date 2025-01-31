@@ -2,6 +2,7 @@
 export default {
 	testEnvironment: "node",
 	testPathIgnorePatterns: ["./dist/"],
+	// preset: "ts-jest",
 	transform: {
 		"^.+.tsx?$": ["ts-jest", {}],
 	},

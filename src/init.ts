@@ -1,4 +1,4 @@
-import { DB } from "./database/database.js";
+import { db } from "./database/database.js";
 import { Role, User } from "./model/model.js";
 
 if (process.argv.length < 5) {
@@ -15,4 +15,4 @@ const user: User = {
 	password,
 	roles: [{ role: Role.Admin, objectId: 0 }],
 };
-DB.addUser(user).then((r: User) => console.log("created user: ", r));
+db.addUser(user).then((r: User) => console.log("created user: ", r));

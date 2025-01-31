@@ -5,7 +5,8 @@
 	"main": "index.js",
 	"type": "module",
 	"scripts": {
-		"build": "tsc && cp ./src/version.json ./dist",
+		"clean": "rm -rf ./dist",
+		"build": "npm run clean && tsc && cp ./src/version.json ./dist",
 		"start": "npm run build && node dist/index.js",
 		"dev": "tsx watch src/index.ts",
 		"lint": "eslint 'src/**/*.{js,ts}'",

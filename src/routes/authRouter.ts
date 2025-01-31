@@ -1,7 +1,7 @@
 import express, { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import config from "../config.js";
-import { DB } from "../database/database.js";
+import { db } from "../database/database.js";
 import { asyncHandler } from "../endpointHelper.js";
 import { Role, RoleValueType, User } from "../model/model.js";
 import { ExtendedRouter, RequestUser } from "./RouterModels.js";
@@ -78,7 +78,7 @@ async function setAuthUser(
 	const token = readAuthToken(req);
 	if (token) {
 		try {
-			if (await DB.isLoggedIn(token)) {
+			if (await db.isLoggedIn(token)) {
 				const decoded = jwt.verify(token, config.jwtSecret) as User;
 				const user: RequestUser = {
 					...decoded,
@@ -115,7 +115,7 @@ authRouter.post(
 				.status(400)
 				.json({ message: "name, email, and password are required" });
 		}
-		const user = await DB.addUser({
+		const user = await db.addUser({
 			name,
 			email,
 			password,
@@ -131,7 +131,7 @@ authRouter.put(
 	"/",
 	asyncHandler(async (req: Request, res: Response) => {
 		const { email, password } = req.body;
-		const user = await DB.getUser(email, password);
+		const user = await db.getUser(email, password);
 		const token = await setAuth(user);
 		res.json({ user, token });
 	})
@@ -160,21 +160,21 @@ authRouter.put(
 			return res.status(403).json({ message: "unauthorized" });
 		}
 
-		const updatedUser = await DB.updateUser(userId, email, password);
+		const updatedUser = await db.updateUser(userId, email, password);
 		res.json(updatedUser);
 	}) as express.RequestHandler)
 );
 
 async function setAuth(user: User): Promise<string> {
 	const token = jwt.sign(user, config.jwtSecret);
-	await DB.loginUser(user.id!, token);
+	await db.loginUser(user.id!, token);
 	return token;
 }
 
 async function clearAuth(req: AuthenticatedRequest) {
 	const token = readAuthToken(req);
 	if (token) {
-		await DB.logoutUser(token);
+		await db.logoutUser(token);
 	}
 }
 

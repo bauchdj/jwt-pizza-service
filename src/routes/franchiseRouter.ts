@@ -1,5 +1,5 @@
 import express, { Request, Response } from "express";
-import { DB } from "../database/database.js";
+import { db } from "../database/database.js";
 import { StatusCodeError, asyncHandler } from "../endpointHelper.js";
 import { Franchise, Role } from "../model/model.js";
 import { authRouter } from "./authRouter.js";
@@ -83,7 +83,7 @@ franchiseRouter.endpoints = [
 franchiseRouter.get(
 	"/",
 	asyncHandler(async (req: Request, res: Response) => {
-		res.json(await DB.getFranchises((req as UserRequest).user));
+		res.json(await db.getFranchises((req as UserRequest).user));
 	})
 );
 
@@ -97,7 +97,7 @@ franchiseRouter.get(
 		const user = (req as UserRequest).user as RequestUser;
 
 		if (user.id === userId || user.isRole(Role.Admin)) {
-			result = await DB.getUserFranchises(userId);
+			result = await db.getUserFranchises(userId);
 		}
 
 		res.json(result);
@@ -116,7 +116,7 @@ franchiseRouter.post(
 		}
 
 		const franchise = req.body;
-		res.send(await DB.createFranchise(franchise));
+		res.send(await db.createFranchise(franchise));
 	})
 );
 
@@ -132,7 +132,7 @@ franchiseRouter.delete(
 		}
 
 		const franchiseId = Number(req.params.franchiseId);
-		await DB.deleteFranchise(franchiseId);
+		await db.deleteFranchise(franchiseId);
 		res.json({ message: "franchise deleted" });
 	})
 );
@@ -143,7 +143,7 @@ franchiseRouter.post(
 	authRouter.authenticateToken,
 	asyncHandler(async (req: Request, res: Response) => {
 		const franchiseId = await getFranchiseIdIfAdmin(req);
-		res.send(await DB.createStore(franchiseId, req.body));
+		res.send(await db.createStore(franchiseId, req.body));
 	})
 );
 
@@ -155,7 +155,7 @@ franchiseRouter.delete(
 		const franchiseId = await getFranchiseIdIfAdmin(req);
 
 		const storeId = Number(req.params.storeId);
-		await DB.deleteStore(franchiseId, storeId);
+		await db.deleteStore(franchiseId, storeId);
 		res.json({ message: "store deleted" });
 	})
 );
@@ -164,7 +164,7 @@ async function getFranchiseIdIfAdmin(req: Request) {
 	const franchiseId = Number(req.params.franchiseId);
 	const user = (req as UserRequest).user as RequestUser;
 	// TODO this franchise object does not have all the info necessary
-	const franchise = await DB.getFranchise({ id: franchiseId } as Franchise);
+	const franchise = await db.getFranchise({ id: franchiseId } as Franchise);
 	if (
 		!franchise ||
 		(!user.isRole(Role.Admin) &&

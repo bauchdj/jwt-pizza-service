@@ -1,6 +1,6 @@
 import express, { Response } from "express";
 import config from "../config.js";
-import { DB } from "../database/database.js";
+import { db } from "../database/database.js";
 import { asyncHandler, StatusCodeError } from "../endpointHelper.js";
 import { Role } from "../model/model.js";
 import { authRouter } from "./authRouter.js";
@@ -89,7 +89,7 @@ orderRouter.endpoints = [
 orderRouter.get(
 	"/menu",
 	asyncHandler((async (req: UserRequest, res: Response) => {
-		res.send(await DB.getMenu());
+		res.send(await db.getMenu());
 	}) as unknown as express.RequestHandler)
 );
 
@@ -103,8 +103,8 @@ orderRouter.put(
 		}
 
 		const addMenuItemReq = req.body;
-		await DB.addMenuItem(addMenuItemReq);
-		res.send(await DB.getMenu());
+		await db.addMenuItem(addMenuItemReq);
+		res.send(await db.getMenu());
 	}) as unknown as express.RequestHandler)
 );
 
@@ -116,7 +116,7 @@ orderRouter.get(
 		const page = req.query.page
 			? parseInt(req.query.page as string, 10)
 			: undefined;
-		res.json(await DB.getOrders(req.user, page));
+		res.json(await db.getOrders(req.user, page));
 	}) as unknown as express.RequestHandler)
 );
 
@@ -126,7 +126,7 @@ orderRouter.post(
 	authRouter.authenticateToken,
 	asyncHandler((async (req: UserRequest, res: Response) => {
 		const orderReq = req.body;
-		const order = await DB.addDinerOrder(req.user, orderReq);
+		const order = await db.addDinerOrder(req.user, orderReq);
 
 		const response = await fetch(`${config.factory.url}/api/order`, {
 			method: "POST",
