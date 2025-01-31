@@ -7,9 +7,9 @@
 	"scripts": {
 		"clean": "rm -rf ./dist",
 		"build": "npm run clean && tsc && cp ./src/version.json ./dist",
-		"start": "npm run build && node dist/index.js",
+		"start": "npm run build && node dist/src/index.js",
 		"dev": "tsx watch src/index.ts",
-		"lint": "eslint 'src/**/*.{js,ts}'",
+		"lint": "eslint '{src,tests}/**/*.{js,ts}'",
 		"test": "jest"
 	},
 	"license": "MIT",
