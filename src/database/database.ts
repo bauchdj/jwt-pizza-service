@@ -435,7 +435,7 @@ class DB {
 	async query<T extends mysql.QueryResult>(
 		connection: mysql.Connection,
 		sql: string,
-		params?: any[]
+		params?: unknown[]
 	): Promise<T> {
 		const [rows] = await connection.execute<T>(sql, params);
 		return rows;

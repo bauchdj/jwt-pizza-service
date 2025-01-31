@@ -3,7 +3,7 @@ import { DB } from "../database/database.js";
 import { StatusCodeError, asyncHandler } from "../endpointHelper.js";
 import { Franchise, Role } from "../model/model.js";
 import { authRouter } from "./authRouter.js";
-import { ExtendedRouter, RequestUser } from "./RouterModels.js";
+import { ExtendedRouter, RequestUser, UserRequest } from "./RouterModels.js";
 
 const franchiseRouter: ExtendedRouter = express.Router();
 
@@ -83,7 +83,7 @@ franchiseRouter.endpoints = [
 franchiseRouter.get(
 	"/",
 	asyncHandler(async (req: Request, res: Response) => {
-		res.json(await DB.getFranchises((req as any).user));
+		res.json(await DB.getFranchises((req as UserRequest).user));
 	})
 );
 
@@ -94,7 +94,7 @@ franchiseRouter.get(
 	asyncHandler(async (req: Request, res: Response) => {
 		const userId = Number(req.params.userId);
 		let result: Franchise[] = [];
-		const user = (req as any).user as RequestUser;
+		const user = (req as UserRequest).user as RequestUser;
 
 		if (user.id === userId || user.isRole(Role.Admin)) {
 			result = await DB.getUserFranchises(userId);
@@ -109,7 +109,7 @@ franchiseRouter.post(
 	"/",
 	authRouter.authenticateToken,
 	asyncHandler(async (req: Request, res: Response) => {
-		const user = (req as any).user as RequestUser;
+		const user = (req as UserRequest).user as RequestUser;
 
 		if (!user.isRole(Role.Admin)) {
 			throw new StatusCodeError("unable to create a franchise", 403);
@@ -125,7 +125,7 @@ franchiseRouter.delete(
 	"/:franchiseId",
 	authRouter.authenticateToken,
 	asyncHandler(async (req: Request, res: Response) => {
-		const user = (req as any).user as RequestUser;
+		const user = (req as UserRequest).user as RequestUser;
 
 		if (!user.isRole(Role.Admin)) {
 			throw new StatusCodeError("unable to delete a franchise", 403);
@@ -162,7 +162,7 @@ franchiseRouter.delete(
 
 async function getFranchiseIdIfAdmin(req: Request) {
 	const franchiseId = Number(req.params.franchiseId);
-	const user = (req as any).user as RequestUser;
+	const user = (req as UserRequest).user as RequestUser;
 	// TODO this franchise object does not have all the info necessary
 	const franchise = await DB.getFranchise({ id: franchiseId } as Franchise);
 	if (

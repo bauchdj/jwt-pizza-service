@@ -1,5 +1,6 @@
 import express, { NextFunction, Request, Response } from "express";
 import config from "./config.js";
+import { StatusCodeError } from "./endpointHelper.js";
 import { authRouter, setAuthUser } from "./routes/authRouter.js";
 import franchiseRouter from "./routes/franchiseRouter.js";
 import orderRouter from "./routes/orderRouter.js";
@@ -55,11 +56,17 @@ app.use("*", (req: Request, res: Response) => {
 });
 
 // Default error handler for all exceptions and errors
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-	res.status((err as any).statusCode ?? 500).json({
-		message: err.message,
-		stack: process.env.NODE_ENV === "production" ? undefined : err.stack,
-	});
-});
+app.use(
+	(err: StatusCodeError, req: Request, res: Response, next: NextFunction) => {
+		const status = err.statusCode ?? 500;
+		res.status(status).json({
+			message: err.message,
+			stack:
+				process.env.NODE_ENV === "production" ? undefined : err.stack,
+		});
+
+		if (!status) next();
+	}
+);
 
 export default app;

@@ -1,4 +1,4 @@
-import { Request, Router } from "express";
+import { Request, Response, Router } from "express";
 import { MenuItem, RoleValueType, User } from "../model/model.js";
 
 export interface FranchiseGetItems {
@@ -37,8 +37,4 @@ export interface UserRequest extends Request {
 	user: RequestUser;
 }
 
-export type UserRequestHandler = (
-	req: UserRequest,
-	res: Response,
-	next: undefined
-) => unknown;
+export type UserRequestHandler = (req: UserRequest, res: Response) => unknown;
