@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import mysql from "mysql2/promise";
-import config from "../config.js";
-import { StatusCodeError } from "../endpointHelper.js";
+import config from "../config";
+import { StatusCodeError } from "../endpointHelper";
 import {
 	DinerOrder,
 	Franchise,
@@ -11,8 +11,8 @@ import {
 	Store,
 	User,
 	UserRole,
-} from "../model/model.js";
-import dbModel from "./dbModel.js";
+} from "../model/model";
+import dbModel from "./dbModel";
 
 class DB {
 	config: typeof config;

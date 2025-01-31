@@ -1,5 +1,5 @@
 import { Request, Response, Router } from "express";
-import { MenuItem, RoleValueType, User } from "../model/model.js";
+import { MenuItem, RoleValueType, User } from "../model/model";
 
 export interface FranchiseGetItems {
 	id: number;

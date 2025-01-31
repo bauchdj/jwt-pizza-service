@@ -1,5 +1,5 @@
-import { db } from "./database/database.js";
-import { Role, User } from "./model/model.js";
+import { db } from "./database/database";
+import { Role, User } from "./model/model";
 
 if (process.argv.length < 5) {
 	console.log("Usage: node init.js <name> <email> <password>");

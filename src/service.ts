@@ -1,9 +1,9 @@
 import express, { NextFunction, Request, Response } from "express";
-import config from "./config.js";
-import { StatusCodeError } from "./endpointHelper.js";
-import { authRouter, setAuthUser } from "./routes/authRouter.js";
-import franchiseRouter from "./routes/franchiseRouter.js";
-import orderRouter from "./routes/orderRouter.js";
+import config from "./config";
+import { StatusCodeError } from "./endpointHelper";
+import { authRouter, setAuthUser } from "./routes/authRouter";
+import franchiseRouter from "./routes/franchiseRouter";
+import orderRouter from "./routes/orderRouter";
 import version from "./version.json";
 
 const app = express();

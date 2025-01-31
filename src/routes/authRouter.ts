@@ -1,10 +1,10 @@
 import express, { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import config from "../config.js";
-import { db } from "../database/database.js";
-import { asyncHandler } from "../endpointHelper.js";
-import { Role, RoleValueType, User } from "../model/model.js";
-import { ExtendedRouter, RequestUser } from "./RouterModels.js";
+import config from "../config";
+import { db } from "../database/database";
+import { asyncHandler } from "../endpointHelper";
+import { Role, RoleValueType, User } from "../model/model";
+import { ExtendedRouter, RequestUser } from "./RouterModels";
 
 interface AuthenticatedRequest extends Request {
 	user?: RequestUser;

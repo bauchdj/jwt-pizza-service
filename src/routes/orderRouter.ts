@@ -1,10 +1,10 @@
 import express, { Response } from "express";
-import config from "../config.js";
-import { db } from "../database/database.js";
-import { asyncHandler, StatusCodeError } from "../endpointHelper.js";
-import { Role } from "../model/model.js";
-import { authRouter } from "./authRouter.js";
-import { ExtendedRouter, UserRequest } from "./RouterModels.js";
+import config from "../config";
+import { db } from "../database/database";
+import { asyncHandler, StatusCodeError } from "../endpointHelper";
+import { Role } from "../model/model";
+import { authRouter } from "./authRouter";
+import { ExtendedRouter, UserRequest } from "./RouterModels";
 
 const orderRouter: ExtendedRouter = express.Router() as ExtendedRouter;
 

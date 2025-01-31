@@ -1,9 +1,9 @@
 import express, { Request, Response } from "express";
-import { db } from "../database/database.js";
-import { StatusCodeError, asyncHandler } from "../endpointHelper.js";
-import { Franchise, Role } from "../model/model.js";
-import { authRouter } from "./authRouter.js";
-import { ExtendedRouter, RequestUser, UserRequest } from "./RouterModels.js";
+import { db } from "../database/database";
+import { StatusCodeError, asyncHandler } from "../endpointHelper";
+import { Franchise, Role } from "../model/model";
+import { authRouter } from "./authRouter";
+import { ExtendedRouter, RequestUser, UserRequest } from "./RouterModels";
 
 const franchiseRouter: ExtendedRouter = express.Router();
 
