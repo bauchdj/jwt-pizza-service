@@ -1,11 +1,8 @@
 /** @type {import('jest').Config} */
 const config = {
+	preset: "ts-jest",
 	testEnvironment: "node",
 	testPathIgnorePatterns: ["./dist/"],
-	// preset: "ts-jest",
-	transform: {
-		"^.+.tsx?$": ["ts-jest", {}],
-	},
 	collectCoverage: true,
 	coverageReporters: ["json-summary", "text"],
 	coverageThreshold: {

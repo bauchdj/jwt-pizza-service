@@ -52,7 +52,9 @@ class DB {
 	}
 
 	async addUser(user: User): Promise<User> {
+		console.log("adding user: ", user);
 		const connection = await this.getConnection();
+		console.log("got connection");
 		try {
 			const hashedPassword = await bcrypt.hash(user.password!, 10);
 
@@ -485,31 +487,38 @@ class DB {
 		try {
 			const connection = await this._getConnection(false);
 			try {
-				const dbExists = await this.checkDatabaseExists(connection);
+				// const dbExists = await this.checkDatabaseExists(connection);
+				// console.log(
+				// 	dbExists
+				// 		? "Database exists"
+				// 		: "Database does not exist, creating it: " +
+				// 				this.config.db.connection.database
+				// );
+
+				const createDatabaseStatement = `CREATE DATABASE IF NOT EXISTS ${this.config.db.connection.database}`;
+				await connection.query(createDatabaseStatement);
+
+				const useDatabaseStatement = `USE ${this.config.db.connection.database}`;
+				await connection.query(useDatabaseStatement);
 				console.log(
-					dbExists
-						? "Database exists"
-						: "Database does not exist, creating it"
+					"Using database",
+					this.config.db.connection.database
 				);
 
-				await connection.query(
-					`CREATE DATABASE IF NOT EXISTS ${this.config.db.connection.database}`
+				// if (!dbExists) {
+				// 	console.log("Successfully created database");
+				// }
+
+				await Promise.all(
+					dbModel.tableCreateStatements.map((statement) =>
+						connection.query(statement)
+					)
 				);
-				await connection.query(
-					`USE ${this.config.db.connection.database}`
-				);
 
-				if (!dbExists) {
-					console.log("Successfully created database");
-				}
-
-				for (const statement of dbModel.tableCreateStatements) {
-					await connection.query(statement);
-				}
-
-				if (!dbExists) {
+				if (!false) {
+					// if (!dbExists) {
 					const defaultAdmin: User = {
-						name: "常用名字",
+						name: "admin",
 						email: "a@jwt.com",
 						password: "admin",
 						// TODO no objectId hmm...
@@ -542,5 +551,4 @@ class DB {
 	}
 }
 
-const db = new DB();
-export { db, DB };
+export { DB };
