@@ -1,4 +1,4 @@
-import bcrypt from "bcrypt";
+import argon2 from "argon2";
 import mysql from "mysql2/promise";
 import config from "../config";
 import { StatusCodeError } from "../endpointHelper";
@@ -15,15 +15,19 @@ import {
 import dbModel from "./dbModel";
 
 class DB {
+	private connection: mysql.Connection | null;
+	private connectionTimeout: NodeJS.Timeout | null;
 	config: typeof config;
 	initialized: Promise<void>;
 
 	constructor(dbConfig = config) {
+		this.connection = null;
+		this.connectionTimeout = null;
 		this.config = dbConfig;
 		this.initialized = this.initializeDatabase();
 	}
 
-	async getMenu(): Promise<mysql.RowDataPacket[]> {
+	async getMenu(): Promise<MenuItem[]> {
 		const connection = await this.getConnection();
 		try {
 			const rows = await this.query<mysql.RowDataPacket[]>(
@@ -31,9 +35,9 @@ class DB {
 				`SELECT * FROM menu`,
 				undefined
 			);
-			return rows;
+			return rows as MenuItem[];
 		} finally {
-			connection.end();
+			this.setCloseConnectionTimeout();
 		}
 	}
 
@@ -47,16 +51,15 @@ class DB {
 			);
 			return { ...item, id: addResult.insertId };
 		} finally {
-			connection.end();
+			this.setCloseConnectionTimeout();
 		}
 	}
 
 	async addUser(user: User): Promise<User> {
-		console.log("adding user: ", user);
 		const connection = await this.getConnection();
-		console.log("got connection");
+		console.log("got connection so I can add user now...");
 		try {
-			const hashedPassword = await bcrypt.hash(user.password!, 10);
+			const hashedPassword = await argon2.hash(user.password!);
 
 			const userResult = await this.query<mysql.ResultSetHeader>(
 				connection,
@@ -93,7 +96,7 @@ class DB {
 			}
 			return { ...user, id: userId, password: undefined };
 		} finally {
-			connection.end();
+			this.setCloseConnectionTimeout();
 		}
 	}
 
@@ -106,7 +109,7 @@ class DB {
 				[email]
 			);
 			const user = userResult[0] as User;
-			if (!user || !(await bcrypt.compare(password, user.password!))) {
+			if (!user || !(await argon2.verify(user.password!, password))) {
 				throw new StatusCodeError("unknown user", 404);
 			}
 
@@ -122,7 +125,7 @@ class DB {
 
 			return { ...user, roles: roles, password: undefined };
 		} finally {
-			connection.end();
+			this.setCloseConnectionTimeout();
 		}
 	}
 
@@ -135,7 +138,7 @@ class DB {
 		try {
 			const params: string[] = [];
 			if (password) {
-				const hashedPassword = await bcrypt.hash(password, 10);
+				const hashedPassword = await argon2.hash(password);
 				params.push(`password='${hashedPassword}'`);
 			}
 			if (email) {
@@ -149,7 +152,7 @@ class DB {
 			}
 			return this.getUser(email!, password!);
 		} finally {
-			connection.end();
+			this.setCloseConnectionTimeout();
 		}
 	}
 
@@ -163,7 +166,7 @@ class DB {
 				[token, userId]
 			);
 		} finally {
-			connection.end();
+			this.setCloseConnectionTimeout();
 		}
 	}
 
@@ -178,7 +181,7 @@ class DB {
 			);
 			return authResult.length > 0;
 		} finally {
-			connection.end();
+			this.setCloseConnectionTimeout();
 		}
 	}
 
@@ -190,7 +193,7 @@ class DB {
 				token,
 			]);
 		} finally {
-			connection.end();
+			this.setCloseConnectionTimeout();
 		}
 	}
 
@@ -220,7 +223,7 @@ class DB {
 			}
 			return { dinerId: user.id!, orders, page };
 		} finally {
-			connection.end();
+			this.setCloseConnectionTimeout();
 		}
 	}
 
@@ -249,7 +252,7 @@ class DB {
 			}
 			return { ...order, id: orderId };
 		} finally {
-			connection.end();
+			this.setCloseConnectionTimeout();
 		}
 	}
 
@@ -290,7 +293,7 @@ class DB {
 
 			return franchise;
 		} finally {
-			connection.end();
+			this.setCloseConnectionTimeout();
 		}
 	}
 
@@ -320,7 +323,7 @@ class DB {
 				throw new StatusCodeError("unable to delete franchise", 500);
 			}
 		} finally {
-			connection.end();
+			this.setCloseConnectionTimeout();
 		}
 	}
 
@@ -345,7 +348,7 @@ class DB {
 			}
 			return franchises;
 		} finally {
-			connection.end();
+			this.setCloseConnectionTimeout();
 		}
 	}
 
@@ -374,7 +377,7 @@ class DB {
 			}
 			return franchises;
 		} finally {
-			connection.end();
+			this.setCloseConnectionTimeout();
 		}
 	}
 
@@ -393,7 +396,7 @@ class DB {
 			)) as Store[];
 			return franchise;
 		} finally {
-			connection.end();
+			this.setCloseConnectionTimeout();
 		}
 	}
 
@@ -407,7 +410,7 @@ class DB {
 			);
 			return { id: insertResult.insertId, franchiseId, name: store.name };
 		} finally {
-			connection.end();
+			this.setCloseConnectionTimeout();
 		}
 	}
 
@@ -420,7 +423,7 @@ class DB {
 				[franchiseId, storeId]
 			);
 		} finally {
-			connection.end();
+			this.setCloseConnectionTimeout();
 		}
 	}
 
@@ -465,8 +468,17 @@ class DB {
 
 	async getConnection() {
 		// TODO Make sure the database is initialized before trying to get a connection.
+		this.clearConnectionTimeout();
+
+		if (this.connection) {
+			console.log("Cached connection");
+			return this.connection;
+		}
+
 		await this.initialized;
-		return this._getConnection();
+
+		console.log("Getting connection");
+		return await this._getConnection();
 	}
 
 	async _getConnection(setUse = true) {
@@ -477,58 +489,37 @@ class DB {
 			connectTimeout: this.config.db.connection.connectTimeout,
 			decimalNumbers: true,
 		});
+		this.connection = connection;
 		if (setUse) {
-			await connection.query(`USE ${this.config.db.connection.database}`);
+			await this.useDatabase(connection);
 		}
 		return connection;
 	}
 
 	async initializeDatabase() {
 		try {
-			const connection = await this._getConnection(false);
-			try {
-				// const dbExists = await this.checkDatabaseExists(connection);
-				// console.log(
-				// 	dbExists
-				// 		? "Database exists"
-				// 		: "Database does not exist, creating it: " +
-				// 				this.config.db.connection.database
-				// );
+			const connection =
+				this.connection ?? (await this._getConnection(false));
 
-				const createDatabaseStatement = `CREATE DATABASE IF NOT EXISTS ${this.config.db.connection.database}`;
-				await connection.query(createDatabaseStatement);
+			const createDatabaseStatement = `CREATE DATABASE IF NOT EXISTS ${this.config.db.connection.database}`;
+			await connection.query(createDatabaseStatement);
 
-				const useDatabaseStatement = `USE ${this.config.db.connection.database}`;
-				await connection.query(useDatabaseStatement);
-				console.log(
-					"Using database",
-					this.config.db.connection.database
-				);
+			await this.useDatabase(connection);
 
-				// if (!dbExists) {
-				// 	console.log("Successfully created database");
-				// }
+			await Promise.all(
+				dbModel.tableCreateStatements.map((statement) =>
+					connection.query(statement)
+				)
+			);
 
-				await Promise.all(
-					dbModel.tableCreateStatements.map((statement) =>
-						connection.query(statement)
-					)
-				);
-
-				if (!false) {
-					// if (!dbExists) {
-					const defaultAdmin: User = {
-						name: "admin",
-						email: "a@jwt.com",
-						password: "admin",
-						// TODO no objectId hmm...
-						roles: [{ role: Role.Admin, objectId: 0 }],
-					};
-					this.addUser(defaultAdmin);
-				}
-			} finally {
-				connection.end();
-			}
+			const defaultAdmin: User = {
+				name: "admin",
+				email: "a@jwt.com",
+				password: "admin",
+				// TODO no objectId hmm...
+				roles: [{ role: Role.Admin, objectId: 0 }],
+			};
+			await this.addUser(defaultAdmin);
 		} catch (err) {
 			// TODO if (!(err instanceof Error)) return;
 			console.error(
@@ -539,6 +530,8 @@ class DB {
 					connection: this.config.db.connection,
 				})
 			);
+		} finally {
+			this.setCloseConnectionTimeout();
 		}
 	}
 
@@ -548,6 +541,42 @@ class DB {
 			[this.config.db.connection.database]
 		);
 		return rows.length > 0;
+	}
+
+	async useDatabase(connection: mysql.Connection) {
+		const useDatabaseStatement = `USE ${this.config.db.connection.database}`;
+		await connection.query(useDatabaseStatement);
+		console.log("Using database", this.config.db.connection.database);
+	}
+
+	async dropDatabase(connection: mysql.Connection, database: string) {
+		await this.query(connection, `DROP DATABASE IF EXISTS ${database}`);
+	}
+
+	async setCloseConnectionTimeout() {
+		console.log("Closing connection");
+		this.clearConnectionTimeout();
+		this.connectionTimeout = setTimeout(async () => {
+			console.log("Connection timeout");
+			await this.endConnection();
+		}, this.config.db.connection.connectTimeout - 1000);
+	}
+
+	async closeConnection() {
+		this.clearConnectionTimeout();
+		await this.endConnection();
+	}
+
+	clearConnectionTimeout() {
+		if (this.connectionTimeout) clearTimeout(this.connectionTimeout);
+		this.connectionTimeout = null;
+	}
+
+	async endConnection() {
+		console.log("Ending connection");
+		if (!this.connection) return;
+		await this.connection.end();
+		this.connection = null;
 	}
 }
 

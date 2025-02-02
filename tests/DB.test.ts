@@ -1,46 +1,103 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, jest, it as jestIt } from "@jest/globals";
 import config from "../src/config";
 import { DB } from "../src/database/DB";
 
-describe("Database Tests", () => {
-	let database: DB;
-	let testDatabases: string[] = [];
+jest.setTimeout(config.db.connection.connectTimeout);
 
-	beforeEach(async () => {
-		// Set up a new database connection and create testing database for each test
-		const randomString = createRandomString(10).toLowerCase();
-		testDatabases.push(randomString);
-		const dbConfig = { ...config };
-		dbConfig.db.connection.database = randomString;
-		database = new DB(dbConfig);
-		await database.initialized;
-		console.log(database.initialized);
-	});
+async function withDatabaseTest(test: (database: DB) => Promise<void>) {
+	const randomDatabase = createRandomString(10).toLowerCase();
+	const dbConfig = { ...config };
+	dbConfig.db.connection.database = randomDatabase;
+	const database = new DB(dbConfig);
+	const connection = await database.getConnection();
 
-	afterAll(async () => {
-		// Clean up the database after each test
-		const connection = await database.getConnection();
-		console.log({ testDatabases });
-		Promise.all(
-			testDatabases.map((databaseString) => {
-				database.query(
+	return async () => {
+		try {
+			await test(database);
+		} catch (error) {
+			console.error(error);
+		} finally {
+			await database.dropDatabase(connection, randomDatabase);
+			console.log("Done");
+		}
+	};
+}
+
+async function it(testName: string, test: (database: DB) => Promise<void>) {
+	const withDatabaseTest = (test: (database: DB) => Promise<void>) => {
+		interface DatabaseContext {
+			database: DB | null;
+			randomDatabase: string | null;
+			try(): Promise<void>;
+			catch(error: unknown): void;
+			finally(): Promise<void>;
+		}
+
+		const databaseContext: DatabaseContext = {
+			database: null,
+			randomDatabase: null,
+			async try(): Promise<void> {
+				const randomDatabase = createRandomString(10).toLowerCase();
+				this.randomDatabase = randomDatabase;
+				const dbConfig = { ...config };
+				dbConfig.db.connection.database = randomDatabase;
+				const database = new DB(dbConfig);
+				this.database = database;
+				// TestFn that gets passed to it() provided by jest
+				await test(database);
+			},
+			catch(error) {
+				console.error(error);
+			},
+			async finally() {
+				if (!this.database || !this.randomDatabase) return;
+
+				const connection = await this.database.getConnection();
+				await this.database.dropDatabase(
 					connection,
-					`DROP DATABASE IF EXISTS ${databaseString}`
+					this.randomDatabase
 				);
-			})
-		);
-	});
+				await this.database.closeConnection();
+				console.log("Done");
+			},
+		};
 
+		return async () => {
+			console.log("Running test: ", testName);
+			try {
+				databaseContext.try();
+			} catch (error) {
+				databaseContext.catch(error);
+			} finally {
+				databaseContext.finally();
+			}
+		};
+	};
+
+	const testFn = withDatabaseTest(test);
+	jestIt(testName, testFn);
+}
+
+describe("Database Tests", () => {
 	describe("Menu Operations", () => {
-		it("should get menu items", async () => {
-			console.log("getting menu");
-			const items = await database.getMenu(); // Call the actual method
+		it("should get menu items", async (database) => {
+			const items = await database.getMenu();
 			expect(items).toBeDefined(); // Check that items are defined
 			expect(Array.isArray(items)).toBe(true); // Check that items is an array
 		});
 
-		// it("should add menu item", async () => {
-		// 	const newItem = {
+		// it("should add menu item", async (database) => {
+		// jestIt(
+		// 	"should get menu items",
+		// 	async () =>
+		// 		await withDatabaseTest(async (database) => {
+		// 			const items = await database.getMenu();
+		// 			expect(items).toBeDefined(); // Check that items are defined
+		// 			expect(Array.isArray(items)).toBe(true); // Check that items is an array
+		// 		})
+		// );
+
+		// 	const newItem: MenuItem = {
 		// 		title: "Pizza",
 		// 		description: "Delicious",
 		// 		image: "url",
@@ -52,7 +109,6 @@ describe("Database Tests", () => {
 		// 	expect(addedItem.description).toBe(newItem.description); // Check that the description matches
 		// 	expect(addedItem.image).toBe(newItem.image); // Check that the image matches
 		// 	expect(addedItem.price).toBe(newItem.price); // Check that the price matches
-		// });
 	});
 
 	// describe("User Operations", () => {
