@@ -4,25 +4,6 @@ import { DB } from "../src/database/DB";
 
 jest.setTimeout(config.db.connection.connectTimeout);
 
-async function withDatabaseTest(test: (database: DB) => Promise<void>) {
-	const randomDatabase = createRandomString(10).toLowerCase();
-	const dbConfig = { ...config };
-	dbConfig.db.connection.database = randomDatabase;
-	const database = new DB(dbConfig);
-	const connection = await database.getConnection();
-
-	return async () => {
-		try {
-			await test(database);
-		} catch (error) {
-			console.error(error);
-		} finally {
-			await database.dropDatabase(connection, randomDatabase);
-			console.log("Done");
-		}
-	};
-}
-
 async function it(testName: string, test: (database: DB) => Promise<void>) {
 	const withDatabaseTest = (test: (database: DB) => Promise<void>) => {
 		interface DatabaseContext {
@@ -43,14 +24,20 @@ async function it(testName: string, test: (database: DB) => Promise<void>) {
 				dbConfig.db.connection.database = randomDatabase;
 				const database = new DB(dbConfig);
 				this.database = database;
+				await database.initialized;
 				// TestFn that gets passed to it() provided by jest
 				await test(database);
 			},
-			catch(error) {
+			async catch(error) {
 				console.error(error);
 			},
 			async finally() {
-				if (!this.database || !this.randomDatabase) return;
+				if (!this.database || !this.randomDatabase) {
+					console.error(
+						new Error("Database or random database is not set")
+					);
+					return;
+				}
 
 				const connection = await this.database.getConnection();
 				await this.database.dropDatabase(
@@ -63,13 +50,10 @@ async function it(testName: string, test: (database: DB) => Promise<void>) {
 		};
 
 		return async () => {
-			console.log("Running test: ", testName);
 			try {
-				databaseContext.try();
-			} catch (error) {
-				databaseContext.catch(error);
+				await databaseContext.try();
 			} finally {
-				databaseContext.finally();
+				await databaseContext.finally();
 			}
 		};
 	};

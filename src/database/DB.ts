@@ -57,7 +57,6 @@ class DB {
 
 	async addUser(user: User): Promise<User> {
 		const connection = await this.getConnection();
-		console.log("got connection so I can add user now...");
 		try {
 			const hashedPassword = await argon2.hash(user.password!);
 
@@ -471,13 +470,13 @@ class DB {
 		this.clearConnectionTimeout();
 
 		if (this.connection) {
-			console.log("Cached connection");
+			// console.log("Cached connection");
 			return this.connection;
 		}
 
 		await this.initialized;
 
-		console.log("Getting connection");
+		// console.log("Getting connection");
 		return await this._getConnection();
 	}
 
@@ -546,7 +545,7 @@ class DB {
 	async useDatabase(connection: mysql.Connection) {
 		const useDatabaseStatement = `USE ${this.config.db.connection.database}`;
 		await connection.query(useDatabaseStatement);
-		console.log("Using database", this.config.db.connection.database);
+		// console.log("Using database", this.config.db.connection.database);
 	}
 
 	async dropDatabase(connection: mysql.Connection, database: string) {
@@ -554,10 +553,10 @@ class DB {
 	}
 
 	async setCloseConnectionTimeout() {
-		console.log("Closing connection");
+		// console.log("Closing connection");
 		this.clearConnectionTimeout();
 		this.connectionTimeout = setTimeout(async () => {
-			console.log("Connection timeout");
+			// console.log("Connection timeout");
 			await this.endConnection();
 		}, this.config.db.connection.connectTimeout - 1000);
 	}
@@ -573,7 +572,7 @@ class DB {
 	}
 
 	async endConnection() {
-		console.log("Ending connection");
+		// console.log("Ending connection");
 		if (!this.connection) return;
 		await this.connection.end();
 		this.connection = null;
