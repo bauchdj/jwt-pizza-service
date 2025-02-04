@@ -23,6 +23,7 @@ interface UserRole {
 
 interface MenuItem {
 	id?: number;
+	menuId?: number;
 	title: string;
 	image: string;
 	price: number;
@@ -58,9 +59,11 @@ interface DinerOrder {
 }
 
 interface OrderItem {
+	id?: number;
 	menuId: number;
 	description: string;
 	price: number;
+	items?: MenuItem[];
 }
 
 export type {

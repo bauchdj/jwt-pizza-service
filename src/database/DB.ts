@@ -7,6 +7,7 @@ import {
 	Franchise,
 	FranchiseAdmin,
 	MenuItem,
+	OrderItem,
 	Role,
 	Store,
 	User,
@@ -229,7 +230,7 @@ class DB {
 		page = 1
 	): Promise<{
 		dinerId: number;
-		orders: mysql.RowDataPacket[];
+		orders: OrderItem[];
 		page: number;
 	}> {
 		const connection = await this.getConnection();
@@ -237,18 +238,18 @@ class DB {
 		try {
 			const offset = this.getOffset(page, this.config.db.listPerPage);
 
-			const orders = await this.query<mysql.RowDataPacket[]>(
+			const orders = (await this.query<mysql.RowDataPacket[]>(
 				connection,
 				`SELECT id, franchiseId, storeId, date FROM dinerOrder WHERE dinerId=? LIMIT ${offset},${this.config.db.listPerPage}`,
 				[user.id]
-			);
+			)) as OrderItem[];
 
 			for (const order of orders) {
-				const items = await this.query<mysql.RowDataPacket[]>(
+				const items = (await this.query<mysql.RowDataPacket[]>(
 					connection,
 					`SELECT id, menuId, description, price FROM orderItem WHERE orderId=?`,
 					[order.id]
-				);
+				)) as MenuItem[];
 
 				order.items = items;
 			}

@@ -120,20 +120,47 @@ describe("Database Tests", () => {
 			expect(dbFranchise.admins[0]).toBe(franchise.admins[0]);
 			expect(dbFranchise.stores).toBe(franchise.stores);
 		});
+
+		void it("should fail to create franchise", async (database) => {
+			const dinerUser = createUserObject(Role.Diner);
+
+			const franchise: Franchise = createFranciseInstanceFromUserArray([
+				dinerUser,
+			]);
+
+			await expect(
+				async () => await database.createFranchise(franchise)
+			).rejects.toThrow();
+		});
 	});
 
 	describe("Order Operations", () => {
 		void it("should add diner order", async (database) => {
-			const { order, dinerOrder, orderItem } = await addTestDinerOrder(
-				database
-			);
+			const { dbDinerOrder, dinerOrder, orderItem } =
+				await addTestDinerOrder(database);
 
-			expect(order).toBeDefined();
-			expect(order.id).toBeDefined();
-			expect(order.dinerId).toBe(dinerOrder.dinerId);
-			expect(order.franchiseId).toBe(dinerOrder.franchiseId);
-			expect(order.storeId).toBe(dinerOrder.storeId);
-			expect(order.items[0]).toBe(orderItem);
+			expect(dbDinerOrder).toBeDefined();
+			expect(dbDinerOrder.id).toBeDefined();
+			expect(dbDinerOrder.dinerId).toBe(dinerOrder.dinerId);
+			expect(dbDinerOrder.franchiseId).toBe(dinerOrder.franchiseId);
+			expect(dbDinerOrder.storeId).toBe(dinerOrder.storeId);
+			expect(dbDinerOrder.items[0]).toBe(orderItem);
+		});
+
+		void it("should get orders", async (database) => {
+			const { dinerOrder, dbUser } = await addTestDinerOrder(database);
+			const orders = await database.getOrders(dbUser);
+
+			expect(orders).toBeDefined();
+			expect(orders.dinerId).toBe(dbUser.id!);
+			expect(orders.orders).toBeDefined();
+			expect(orders.orders.length).toBe(1);
+
+			const ordersItem = orders.orders[0].items![0];
+
+			expect(ordersItem).toBeDefined();
+			expect(ordersItem.menuId).toBeDefined();
+			expect(ordersItem.menuId!).toBe(dinerOrder.items[0].menuId);
 		});
 	});
 });
@@ -149,18 +176,6 @@ async function addTestMenuItem(database: DB) {
 	const dbMenuItem = await database.addMenuItem(menuItem);
 
 	return { dbMenuItem, menuItem };
-}
-
-async function addTestUser(database: DB, role?: RoleValueType) {
-	const user: User = createUserObject(role);
-	const dbUser = await database.addUser(user);
-
-	expect(dbUser).toHaveProperty("id");
-	expect(dbUser.name).toBe(user.name);
-	expect(dbUser.email).toBe(user.email);
-	expect(dbUser.password).toBeUndefined();
-
-	return { dbUser, user };
 }
 
 function createUserObject(role?: RoleValueType) {
@@ -192,11 +207,9 @@ async function createTestFranchiseAndStore(database: DB) {
 		Role.Franchisee
 	);
 
-	const franchise: Franchise = {
-		name: "Test Franchise",
-		admins: [dbFranchiseUser],
-		stores: [],
-	};
+	const franchise: Franchise = createFranciseInstanceFromUserArray([
+		dbFranchiseUser,
+	]);
 
 	const dbFranchise = await database.createFranchise(franchise);
 
@@ -215,6 +228,16 @@ async function createTestFranchiseAndStore(database: DB) {
 		dbUser,
 		dbAdminUser,
 		dbFranchiseUser,
+	};
+}
+
+function createFranciseInstanceFromUserArray(admins: User[]): Franchise {
+	const name = "Test Franchise" + createRandomString(5);
+
+	return {
+		name,
+		admins,
+		stores: [],
 	};
 }
 
@@ -238,9 +261,29 @@ async function addTestDinerOrder(database: DB) {
 		items: [orderItem],
 	};
 
-	const order = await database.addDinerOrder(dbUser, dinerOrder);
+	const dbDinerOrder = await database.addDinerOrder(dbUser, dinerOrder);
 
-	return { order, dinerOrder, orderItem };
+	return {
+		dbUser,
+		dbStore,
+		dbFranchise,
+		dbDinerOrder,
+		dinerOrder,
+		dbMenuItem,
+		orderItem,
+	};
+}
+
+async function addTestUser(database: DB, role?: RoleValueType) {
+	const user: User = createUserObject(role);
+	const dbUser = await database.addUser(user);
+
+	expect(dbUser).toHaveProperty("id");
+	expect(dbUser.name).toBe(user.name);
+	expect(dbUser.email).toBe(user.email);
+	expect(dbUser.password).toBeUndefined();
+
+	return { dbUser, user };
 }
 
 async function it(testName: string, test: (database: DB) => Promise<void>) {
