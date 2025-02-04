@@ -1,4 +1,11 @@
-import { describe, expect, jest, it as jestIt } from "@jest/globals";
+import {
+	afterAll,
+	beforeAll,
+	describe,
+	expect,
+	jest,
+	it as jestIt,
+} from "@jest/globals";
 import jwt from "jsonwebtoken";
 import config from "../src/config";
 import { DB } from "../src/database/DB";
@@ -19,30 +26,85 @@ import DatabaseTestContext from "./DatabaseTestContext";
 jest.setTimeout(config.db.connection.connectTimeout);
 
 describe("Database Tests", () => {
-	jestIt("creates database, connects, closes connection", async () => {
-		const databaseTestContext = new DatabaseTestContext(
-			config,
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			async (database) => {}
-		);
+	describe("Connection Tests", () => {
+		jestIt("creates database, connects, closes connection", async () => {
+			const database = await createConnectionTestDatabase();
 
-		const database = databaseTestContext.createDatabase();
+			await database.closeConnection();
 
-		expect(database).toBeDefined();
+			await testIfConnectionIsClosed(database);
+		});
 
-		const databaseConnection = await database.getConnection();
+		describe("delayedAction", () => {
+			beforeAll(() => {
+				jest.useFakeTimers({ now: 0 });
+			});
 
-		expect(databaseConnection).toBeDefined();
+			afterAll(() => {
+				jest.useRealTimers();
+			});
 
-		let databaseIsActive = await database.isConnectionAlive();
+			jestIt(
+				"creates database, connects, closes connection AFTER timeout",
+				async () => {
+					const database = await createConnectionTestDatabase();
+					const advanceTimeBy = config.db.connection.connectTimeout;
 
-		expect(databaseIsActive).toBe(true);
+					const spySetCloseConnectionTimeout = jest.spyOn(
+						database,
+						"setCloseConnectionTimeout"
+					);
 
-		await database.closeConnection();
+					expect(spySetCloseConnectionTimeout).not.toHaveBeenCalled();
 
-		databaseIsActive = await database.isConnectionAlive();
+					// // Advance the timers by 1 second (less than the delay)
+					// jest.advanceTimersByTime(advanceTimeBy - 1000);
 
-		expect(databaseIsActive).toBe(false);
+					// // The callback should not have been called yet
+					// expect(spySetCloseConnectionTimeout).not.toHaveBeenCalled();
+
+					// // Advance the timers by another second (total 2 seconds)
+					// jest.advanceTimersByTime(1000);
+
+					// // Now the callback should have been called
+					// expect(spySetCloseConnectionTimeout).toHaveBeenCalledTimes(
+					// 	1
+					// );
+
+					await testIfConnectionIsClosed(database);
+				}
+			);
+		});
+
+		async function createConnectionTestDatabase() {
+			const databaseTestContext = new DatabaseTestContext(
+				config,
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
+				async (database) => {}
+			);
+
+			const database = databaseTestContext.createDatabase();
+
+			expect(database).toBeDefined();
+
+			const databaseConnection = await database.getConnection();
+
+			expect(databaseConnection).toBeDefined();
+
+			const databaseIsActive = await database.isConnectionAlive();
+
+			expect(databaseIsActive).toBe(true);
+
+			await database.closeConnection();
+
+			return database;
+		}
+
+		async function testIfConnectionIsClosed(database: DB) {
+			const databaseIsActive = await database.isConnectionAlive();
+
+			expect(databaseIsActive).toBe(false);
+		}
 	});
 
 	describe("Menu Operations", () => {

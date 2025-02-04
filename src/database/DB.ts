@@ -629,11 +629,11 @@ class DB {
 	}
 
 	setCloseConnectionTimeout() {
-		// console.log("Closing connection");
+		console.log("Closing connection");
 		this.clearConnectionTimeout();
 
 		this.connectionTimeout = setTimeout(async () => {
-			// console.log("Connection timeout");
+			console.log("Connection timeout");
 			await this.endConnection();
 		}, this.config.db.connection.connectTimeout - 1000);
 	}
