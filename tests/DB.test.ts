@@ -13,10 +13,38 @@ import {
 	User,
 	UserRole,
 } from "../src/model/model";
+import createRandomString from "../src/utils/utils";
+import DatabaseTestContext from "./DatabaseTestContext";
 
 jest.setTimeout(config.db.connection.connectTimeout);
 
 describe("Database Tests", () => {
+	jestIt("creates database, connects, closes connection", async () => {
+		const databaseTestContext = new DatabaseTestContext(
+			config,
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			async (database) => {}
+		);
+
+		const database = databaseTestContext.createDatabase();
+
+		expect(database).toBeDefined();
+
+		const databaseConnection = await database.getConnection();
+
+		expect(databaseConnection).toBeDefined();
+
+		let databaseIsActive = await database.isConnectionAlive();
+
+		expect(databaseIsActive).toBe(true);
+
+		await database.closeConnection();
+
+		databaseIsActive = await database.isConnectionAlive();
+
+		expect(databaseIsActive).toBe(false);
+	});
+
 	describe("Menu Operations", () => {
 		void it("should get menu items", async (database) => {
 			const items = await database.getMenu();
@@ -287,88 +315,22 @@ async function addTestUser(database: DB, role?: RoleValueType) {
 }
 
 async function it(testName: string, test: (database: DB) => Promise<void>) {
-	const withDatabaseTest = (test: (database: DB) => Promise<void>) => {
-		class DatabaseContext {
-			database: DB | null = null;
-			randomDatabase: string | null = null;
-
-			async try(): Promise<void> {
-				const randomDatabase = createRandomString(10).toLowerCase();
-
-				this.randomDatabase = randomDatabase;
-
-				const dbConfig = { ...config };
-
-				dbConfig.db.connection.database = randomDatabase;
-
-				const database = new DB(dbConfig);
-
-				this.database = database;
-
-				// REQURIED!!!
-				// this makes sure that the database is initialization happens preventing the connection to finish before the tests do...
-				await database.initialized;
-
-				// TestFn that gets passed to it() provided by jest
-				await test(database);
-			}
-
-			async catch(error: unknown) {
-				console.error(error);
-			}
-
-			async finally() {
-				if (!this.database || !this.randomDatabase) {
-					console.error(
-						new Error("Database or random database is not set")
-					);
-
-					return;
-				}
-
-				const connection = await this.database.getConnection();
-
-				await this.database.dropDatabase(
-					connection,
-					this.randomDatabase
-				);
-
-				await this.database.closeConnection();
-			}
-		}
-
-		const databaseContext = new DatabaseContext();
-
-		return async () => {
-			try {
-				await databaseContext.try();
-			} catch (error) {
-				await databaseContext.catch(error);
-				throw error;
-			} finally {
-				await databaseContext.finally();
-			}
-		};
-	};
-
 	const testFn = withDatabaseTest(test);
 
 	jestIt(testName, testFn);
 }
 
-function createRandomString(length: number): string {
-	let result = "";
+function withDatabaseTest(test: (database: DB) => Promise<void>) {
+	const databaseTestContext = new DatabaseTestContext(config, test);
 
-	const characters =
-		"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-	const charactersLength = characters.length;
-
-	for (let i = 0; i < length; i++) {
-		result += characters.charAt(
-			Math.floor(Math.random() * charactersLength)
-		);
-	}
-
-	return result;
+	return async () => {
+		try {
+			await databaseTestContext.before();
+		} catch (error) {
+			await databaseTestContext.catch(error);
+			throw error;
+		} finally {
+			await databaseTestContext.finally();
+		}
+	};
 }

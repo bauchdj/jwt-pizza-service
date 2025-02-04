@@ -532,6 +532,10 @@ class DB {
 		}
 	}
 
+	async waitTillInitialized() {
+		await this.initialized;
+	}
+
 	async getConnection() {
 		// TODO Make sure the database is initialized before trying to get a connection.
 		this.clearConnectionTimeout();
@@ -541,10 +545,14 @@ class DB {
 			return this.connection;
 		}
 
-		await this.initialized;
+		await this.waitTillInitialized();
+
+		// await new Promise((resolve) => setTimeout(resolve, 100));
 
 		// console.log("Getting connection");
-		return await this._getConnection();
+		const connection = await this._getConnection();
+
+		return connection;
 	}
 
 	async _getConnection(setUse = true) {
