@@ -76,21 +76,25 @@ async function setAuthUser(
 	next: NextFunction
 ) {
 	const token = readAuthToken(req);
+
 	if (token) {
 		try {
 			if (await db.isLoggedIn(token)) {
 				const decoded = jwt.verify(token, config.jwtSecret) as User;
+
 				const user: RequestUser = {
 					...decoded,
 					isRole: (role: RoleValueType) =>
 						!!decoded.roles.find((r) => r.role === role),
 				};
+
 				req.user = user as RequestUser;
 			}
 		} catch {
 			req.user = undefined;
 		}
 	}
+
 	next();
 }
 
@@ -102,6 +106,7 @@ authRouter.authenticateToken = ((
 	if (!req.user) {
 		return res.status(401).send({ message: "unauthorized" });
 	}
+
 	next();
 }) as express.RequestHandler;
 
@@ -110,18 +115,22 @@ authRouter.post(
 	"/",
 	asyncHandler((async (req: Request, res: Response) => {
 		const { name, email, password } = req.body;
+
 		if (!name || !email || !password) {
 			return res
 				.status(400)
 				.json({ message: "name, email, and password are required" });
 		}
+
 		const user = await db.addUser({
 			name,
 			email,
 			password,
 			roles: [{ role: Role.Diner, objectId: 0 }],
 		});
+
 		const token = await setAuth(user);
+
 		res.json({ user, token });
 	}) as express.RequestHandler)
 );
@@ -133,6 +142,7 @@ authRouter.put(
 		const { email, password } = req.body;
 		const user = await db.getUser(email, password);
 		const token = await setAuth(user);
+
 		res.json({ user, token });
 	})
 );
@@ -161,18 +171,22 @@ authRouter.put(
 		}
 
 		const updatedUser = await db.updateUser(userId, email, password);
+
 		res.json(updatedUser);
 	}) as express.RequestHandler)
 );
 
 async function setAuth(user: User): Promise<string> {
 	const token = jwt.sign(user, config.jwtSecret);
+
 	await db.loginUser(user.id!, token);
+
 	return token;
 }
 
 async function clearAuth(req: AuthenticatedRequest) {
 	const token = readAuthToken(req);
+
 	if (token) {
 		await db.logoutUser(token);
 	}
@@ -180,6 +194,7 @@ async function clearAuth(req: AuthenticatedRequest) {
 
 function readAuthToken(req: Request): string | null {
 	const authHeader = req.headers.authorization;
+
 	return authHeader ? authHeader.split(" ")[1] : null;
 }
 

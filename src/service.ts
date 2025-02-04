@@ -7,21 +7,25 @@ import orderRouter from "./routes/orderRouter";
 import version from "./version.json";
 
 const app = express();
+
 app.use(express.json());
 app.use(setAuthUser);
 
 app.use((req: Request, res: Response, next: NextFunction) => {
 	res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
 	res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
+
 	res.setHeader(
 		"Access-Control-Allow-Headers",
 		"Content-Type, Authorization"
 	);
+
 	res.setHeader("Access-Control-Allow-Credentials", "true");
 	next();
 });
 
 const apiRouter = express.Router();
+
 app.use("/api", apiRouter);
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/order", orderRouter);
@@ -59,6 +63,7 @@ app.use("*", (req: Request, res: Response) => {
 app.use(
 	(err: StatusCodeError, req: Request, res: Response, next: NextFunction) => {
 		const status = err.statusCode ?? 500;
+
 		res.status(status).json({
 			message: err.message,
 			stack:

@@ -29,12 +29,14 @@ class DB {
 
 	async getMenu(): Promise<MenuItem[]> {
 		const connection = await this.getConnection();
+
 		try {
 			const rows = await this.query<mysql.RowDataPacket[]>(
 				connection,
 				`SELECT * FROM menu`,
 				undefined
 			);
+
 			return rows as MenuItem[];
 		} finally {
 			this.setCloseConnectionTimeout();
@@ -43,12 +45,14 @@ class DB {
 
 	async addMenuItem(item: MenuItem): Promise<MenuItem> {
 		const connection = await this.getConnection();
+
 		try {
 			const addResult = await this.query<mysql.ResultSetHeader>(
 				connection,
 				`INSERT INTO menu (title, description, image, price) VALUES (?, ?, ?, ?)`,
 				[item.title, item.description, item.image, item.price]
 			);
+
 			return { ...item, id: addResult.insertId };
 		} finally {
 			this.setCloseConnectionTimeout();
@@ -57,6 +61,7 @@ class DB {
 
 	async addUser(user: User): Promise<User> {
 		const connection = await this.getConnection();
+
 		try {
 			const hashedPassword = await argon2.hash(user.password!);
 
@@ -65,7 +70,9 @@ class DB {
 				`INSERT INTO user (name, email, password) VALUES (?, ?, ?)`,
 				[user.name, user.email, hashedPassword]
 			);
+
 			const userId = userResult.insertId;
+
 			for (const role of user.roles) {
 				switch (role.role) {
 					// case Role.Franchisee: {
@@ -90,10 +97,12 @@ class DB {
 							`INSERT INTO userRole (userId, role, objectId) VALUES (?, ?, ?)`,
 							[userId, role.role, 0]
 						);
+
 						break;
 					}
 				}
 			}
+
 			return { ...user, id: userId, password: undefined };
 		} finally {
 			this.setCloseConnectionTimeout();
@@ -102,13 +111,16 @@ class DB {
 
 	async getUser(email: string, password: string): Promise<User> {
 		const connection = await this.getConnection();
+
 		try {
 			const userResult = (await this.query<mysql.RowDataPacket[]>(
 				connection,
 				`SELECT * FROM user WHERE email=?`,
 				[email]
 			)) as User[];
+
 			const user = userResult[0];
+
 			if (!user || !(await argon2.verify(user.password!, password))) {
 				throw new StatusCodeError("unknown user", 404);
 			}
@@ -118,6 +130,7 @@ class DB {
 				`SELECT * FROM userRole WHERE userId=?`,
 				[user.id]
 			)) as UserRole[];
+
 			// TODO removed || undefined from objectId values expression
 			const roles: UserRole[] = roleResult.map((r: UserRole) => {
 				return { ...r, objectId: r.objectId, role: r.role };
@@ -135,21 +148,28 @@ class DB {
 		password?: string
 	): Promise<User> {
 		const connection = await this.getConnection();
+
 		try {
 			const params: string[] = [];
+
 			if (password) {
 				const hashedPassword = await argon2.hash(password);
+
 				params.push(`password='${hashedPassword}'`);
 			}
+
 			if (email) {
 				params.push(`email='${email}'`);
 			}
+
 			if (params.length > 0) {
 				const query = `UPDATE user SET ${params.join(
 					", "
 				)} WHERE id=${userId}`;
+
 				await this.query(connection, query);
 			}
+
 			return this.getUser(email!, password!);
 		} finally {
 			this.setCloseConnectionTimeout();
@@ -158,7 +178,9 @@ class DB {
 
 	async loginUser(userId: number, token: string): Promise<void> {
 		token = this.getTokenSignature(token);
+
 		const connection = await this.getConnection();
+
 		try {
 			await this.query(
 				connection,
@@ -172,13 +194,16 @@ class DB {
 
 	async isLoggedIn(token: string): Promise<boolean> {
 		token = this.getTokenSignature(token);
+
 		const connection = await this.getConnection();
+
 		try {
 			const authResult = await this.query<mysql.RowDataPacket[]>(
 				connection,
 				`SELECT userId FROM auth WHERE token=?`,
 				[token]
 			);
+
 			return authResult.length > 0;
 		} finally {
 			this.setCloseConnectionTimeout();
@@ -187,7 +212,9 @@ class DB {
 
 	async logoutUser(token: string): Promise<void> {
 		token = this.getTokenSignature(token);
+
 		const connection = await this.getConnection();
+
 		try {
 			await this.query(connection, `DELETE FROM auth WHERE token=?`, [
 				token,
@@ -206,21 +233,26 @@ class DB {
 		page: number;
 	}> {
 		const connection = await this.getConnection();
+
 		try {
 			const offset = this.getOffset(page, this.config.db.listPerPage);
+
 			const orders = await this.query<mysql.RowDataPacket[]>(
 				connection,
 				`SELECT id, franchiseId, storeId, date FROM dinerOrder WHERE dinerId=? LIMIT ${offset},${this.config.db.listPerPage}`,
 				[user.id]
 			);
+
 			for (const order of orders) {
 				const items = await this.query<mysql.RowDataPacket[]>(
 					connection,
 					`SELECT id, menuId, description, price FROM orderItem WHERE orderId=?`,
 					[order.id]
 				);
+
 				order.items = items;
 			}
+
 			return { dinerId: user.id!, orders, page };
 		} finally {
 			this.setCloseConnectionTimeout();
@@ -229,27 +261,33 @@ class DB {
 
 	async addDinerOrder(user: User, order: DinerOrder): Promise<DinerOrder> {
 		const connection = await this.getConnection();
+
 		try {
 			const orderResult = await this.query<mysql.ResultSetHeader>(
 				connection,
 				`INSERT INTO dinerOrder (dinerId, franchiseId, storeId, date) VALUES (?, ?, ?, now())`,
 				[user.id, order.franchiseId, order.storeId]
 			);
+
 			const orderId = orderResult.insertId;
+
 			for (const item of order.items) {
 				const menuId = await this.getID(
 					connection,
 					"id",
+
 					// TODO toString() removed hmm...
 					item.menuId,
 					"menu"
 				);
+
 				await this.query(
 					connection,
 					`INSERT INTO orderItem (orderId, menuId, description, price) VALUES (?, ?, ?, ?)`,
 					[orderId, menuId, item.description, item.price]
 				);
 			}
+
 			return { ...order, id: orderId };
 		} finally {
 			this.setCloseConnectionTimeout();
@@ -258,6 +296,7 @@ class DB {
 
 	async createFranchise(franchise: Franchise): Promise<Franchise> {
 		const connection = await this.getConnection();
+
 		try {
 			// TODO sus of this admins prop on franchise, not in table
 			for (const admin of franchise.admins) {
@@ -266,12 +305,14 @@ class DB {
 					`SELECT id, name FROM user WHERE email=?`,
 					[admin.email]
 				)) as User[];
+
 				if (adminUser.length == 0) {
 					throw new StatusCodeError(
 						`unknown user for franchise admin ${admin.email} provided`,
 						404
 					);
 				}
+
 				admin.id = adminUser[0].id;
 				admin.name = adminUser[0].name;
 			}
@@ -281,6 +322,7 @@ class DB {
 				`INSERT INTO franchise (name) VALUES (?)`,
 				[franchise.name]
 			);
+
 			franchise.id = franchiseResult.insertId;
 
 			for (const admin of franchise.admins) {
@@ -299,24 +341,29 @@ class DB {
 
 	async deleteFranchise(franchiseId: number): Promise<void> {
 		const connection = await this.getConnection();
+
 		try {
 			await connection.beginTransaction();
+
 			try {
 				await this.query(
 					connection,
 					`DELETE FROM store WHERE franchiseId=?`,
 					[franchiseId]
 				);
+
 				await this.query(
 					connection,
 					`DELETE FROM userRole WHERE objectId=?`,
 					[franchiseId]
 				);
+
 				await this.query(
 					connection,
 					`DELETE FROM franchise WHERE id=?`,
 					[franchiseId]
 				);
+
 				await connection.commit();
 			} catch {
 				await connection.rollback();
@@ -329,12 +376,14 @@ class DB {
 
 	async getFranchises(authUser: User): Promise<Franchise[]> {
 		const connection = await this.getConnection();
+
 		try {
 			const franchises = (await this.query<mysql.RowDataPacket[]>(
 				connection,
 				`SELECT id, name FROM franchise`,
 				undefined
 			)) as Franchise[];
+
 			for (const franchise of franchises) {
 				if (authUser?.roles.some((role) => role.role === Role.Admin)) {
 					await this.getFranchise(franchise);
@@ -346,6 +395,7 @@ class DB {
 					)) as Store[];
 				}
 			}
+
 			return franchises;
 		} finally {
 			this.setCloseConnectionTimeout();
@@ -354,17 +404,20 @@ class DB {
 
 	async getUserFranchises(userId: number): Promise<Franchise[]> {
 		const connection = await this.getConnection();
+
 		try {
 			const franchiseRows = await this.query<mysql.RowDataPacket[]>(
 				connection,
 				`SELECT objectId FROM userRole WHERE role='franchisee' AND userId=?`,
 				[userId]
 			);
+
 			if (franchiseRows.length === 0) {
 				return [];
 			}
 
 			const franchiseIds = franchiseRows.map((v) => v.objectId as number);
+
 			const franchises = (await this.query<mysql.RowDataPacket[]>(
 				connection,
 				`SELECT id, name FROM franchise WHERE id in (${franchiseIds.join(
@@ -372,9 +425,11 @@ class DB {
 				)})`,
 				undefined
 			)) as Franchise[];
+
 			for (const franchise of franchises) {
 				await this.getFranchise(franchise);
 			}
+
 			return franchises;
 		} finally {
 			this.setCloseConnectionTimeout();
@@ -383,17 +438,20 @@ class DB {
 
 	async getFranchise(franchise: Franchise): Promise<Franchise> {
 		const connection = await this.getConnection();
+
 		try {
 			franchise.admins = (await this.query(
 				connection,
 				`SELECT u.id, u.name, u.email FROM userRole AS ur JOIN user AS u ON u.id=ur.userId WHERE ur.objectId=? AND ur.role='franchisee'`,
 				[franchise.id]
 			)) as FranchiseAdmin[];
+
 			franchise.stores = (await this.query(
 				connection,
 				`SELECT id, name FROM store WHERE franchiseId=?`,
 				[franchise.id]
 			)) as Store[];
+
 			return franchise;
 		} finally {
 			this.setCloseConnectionTimeout();
@@ -402,12 +460,14 @@ class DB {
 
 	async createStore(franchiseId: number, store: Store): Promise<Store> {
 		const connection = await this.getConnection();
+
 		try {
 			const insertResult = await this.query<mysql.ResultSetHeader>(
 				connection,
 				`INSERT INTO store (franchiseId, name) VALUES (?, ?)`,
 				[franchiseId, store.name]
 			);
+
 			return { id: insertResult.insertId, franchiseId, name: store.name };
 		} finally {
 			this.setCloseConnectionTimeout();
@@ -416,6 +476,7 @@ class DB {
 
 	async deleteStore(franchiseId: number, storeId: number) {
 		const connection = await this.getConnection();
+
 		try {
 			await this.query(
 				connection,
@@ -429,9 +490,11 @@ class DB {
 
 	getTokenSignature(token: string): string {
 		const parts = token.split(".");
+
 		if (parts.length > 2) {
 			return parts[2];
 		}
+
 		return "";
 	}
 
@@ -445,6 +508,7 @@ class DB {
 		params?: unknown[]
 	): Promise<T> {
 		const [rows] = await connection.execute<T>(sql, params);
+
 		return rows;
 	}
 
@@ -459,6 +523,7 @@ class DB {
 			`SELECT id FROM ${table} WHERE ${field}=?`,
 			[value]
 		);
+
 		if (result.length > 0) {
 			return result[0].id;
 		} else {
@@ -489,10 +554,13 @@ class DB {
 			connectTimeout: this.config.db.connection.connectTimeout,
 			decimalNumbers: true,
 		});
+
 		this.connection = connection;
+
 		if (setUse) {
 			await this.useDatabase(connection);
 		}
+
 		return connection;
 	}
 
@@ -502,6 +570,7 @@ class DB {
 				this.connection ?? (await this._getConnection(false));
 
 			const createDatabaseStatement = `CREATE DATABASE IF NOT EXISTS ${this.config.db.connection.database}`;
+
 			await connection.query(createDatabaseStatement);
 
 			await this.useDatabase(connection);
@@ -516,15 +585,18 @@ class DB {
 				name: "admin",
 				email: "a@jwt.com",
 				password: "admin",
+
 				// TODO no objectId hmm...
 				roles: [{ role: Role.Admin, objectId: 0 }],
 			};
+
 			await this.addUser(defaultAdmin);
 		} catch (err) {
 			// TODO if (!(err instanceof Error)) return;
 			console.error(
 				JSON.stringify({
 					message: "Error initializing database",
+
 					// @ts-expect-error TS(2571): Object is of type 'unknown'.
 					exception: err.message,
 					connection: this.config.db.connection,
@@ -537,7 +609,9 @@ class DB {
 
 	async useDatabase(connection: mysql.Connection) {
 		const useDatabaseStatement = `USE ${this.config.db.connection.database}`;
+
 		await connection.query(useDatabaseStatement);
+
 		// console.log("Using database", this.config.db.connection.database);
 	}
 
@@ -548,6 +622,7 @@ class DB {
 	setCloseConnectionTimeout() {
 		// console.log("Closing connection");
 		this.clearConnectionTimeout();
+
 		this.connectionTimeout = setTimeout(async () => {
 			// console.log("Connection timeout");
 			await this.endConnection();
@@ -574,11 +649,14 @@ class DB {
 		if (!this.connection) {
 			return false;
 		}
+
 		try {
 			await this.connection.ping();
+
 			return true;
 		} catch (error) {
 			console.error(error);
+
 			return false;
 		}
 	}

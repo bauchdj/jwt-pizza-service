@@ -103,6 +103,7 @@ orderRouter.put(
 		}
 
 		const addMenuItemReq = req.body;
+
 		await db.addMenuItem(addMenuItemReq);
 		res.send(await db.getMenu());
 	}) as unknown as express.RequestHandler)
@@ -116,6 +117,7 @@ orderRouter.get(
 		const page = req.query.page
 			? parseInt(req.query.page as string, 10)
 			: undefined;
+
 		res.json(await db.getOrders(req.user, page));
 	}) as unknown as express.RequestHandler)
 );
