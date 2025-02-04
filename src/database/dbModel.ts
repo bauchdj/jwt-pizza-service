@@ -19,8 +19,6 @@ const tableCreateStatements = [
     description TEXT NOT NULL
   )`,
 
-	// TODO The database appears to have an array of admin users on a franchise...
-	// TODO Might need another table...
 	`CREATE TABLE IF NOT EXISTS franchise (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE

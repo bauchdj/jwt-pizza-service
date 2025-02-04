@@ -12,6 +12,6 @@
 			"@src/*": ["src/*"]
 		}
 	},
-	"include": ["src/**/*"], // Include all files in the src directory
+	"include": ["src/**/*", "dist/**/*"], // Include all files in the src directory
 	"exclude": ["node_modules", "dist"] // Exclude node_modules and dist directories
 }

@@ -43,7 +43,7 @@ interface FranchiseAdmin {
 }
 
 interface Store {
-	id: number;
+	id?: number;
 	franchiseId: number;
 	name: string;
 }
@@ -58,8 +58,6 @@ interface DinerOrder {
 }
 
 interface OrderItem {
-	id?: number;
-	orderId: number;
 	menuId: number;
 	description: string;
 	price: number;

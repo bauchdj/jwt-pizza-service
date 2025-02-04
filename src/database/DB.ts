@@ -68,21 +68,22 @@ class DB {
 			const userId = userResult.insertId;
 			for (const role of user.roles) {
 				switch (role.role) {
-					case Role.Franchisee: {
-						const franchiseId = await this.getID(
-							connection,
-							"name",
-							// TODO I think I fixed a bug here using typescript lol
-							role.objectId,
-							"franchise"
-						);
-						await this.query(
-							connection,
-							`INSERT INTO userRole (userId, role, objectId) VALUES (?, ?, ?)`,
-							[userId, role.role, franchiseId]
-						);
-						break;
-					}
+					// case Role.Franchisee: {
+					// 	// TODO you cannot add a franchisee without the franchise existing...
+					// 	const franchiseId = await this.getID(
+					// 		connection,
+					// 		"name",
+					// 		// TODO I think I fixed a bug here using typescript lol
+					// 		role.objectId,
+					// 		"franchise"
+					// 	);
+					// 	await this.query(
+					// 		connection,
+					// 		`INSERT INTO userRole (userId, role, objectId) VALUES (?, ?, ?)`,
+					// 		[userId, role.role, franchiseId]
+					// 	);
+					// 	break;
+					// }
 					default: {
 						await this.query(
 							connection,
@@ -102,12 +103,12 @@ class DB {
 	async getUser(email: string, password: string): Promise<User> {
 		const connection = await this.getConnection();
 		try {
-			const userResult = await this.query<mysql.RowDataPacket[]>(
+			const userResult = (await this.query<mysql.RowDataPacket[]>(
 				connection,
 				`SELECT * FROM user WHERE email=?`,
 				[email]
-			);
-			const user = userResult[0] as User;
+			)) as User[];
+			const user = userResult[0];
 			if (!user || !(await argon2.verify(user.password!, password))) {
 				throw new StatusCodeError("unknown user", 404);
 			}
@@ -534,14 +535,6 @@ class DB {
 		}
 	}
 
-	async checkDatabaseExists(connection: mysql.Connection) {
-		const [rows] = await connection.execute<mysql.RowDataPacket[]>(
-			`SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?`,
-			[this.config.db.connection.database]
-		);
-		return rows.length > 0;
-	}
-
 	async useDatabase(connection: mysql.Connection) {
 		const useDatabaseStatement = `USE ${this.config.db.connection.database}`;
 		await connection.query(useDatabaseStatement);
@@ -552,7 +545,7 @@ class DB {
 		await this.query(connection, `DROP DATABASE IF EXISTS ${database}`);
 	}
 
-	async setCloseConnectionTimeout() {
+	setCloseConnectionTimeout() {
 		// console.log("Closing connection");
 		this.clearConnectionTimeout();
 		this.connectionTimeout = setTimeout(async () => {
@@ -572,10 +565,22 @@ class DB {
 	}
 
 	async endConnection() {
-		// console.log("Ending connection");
-		if (!this.connection) return;
+		if (!this.connection || !(await this.isConnectionAlive())) return;
 		await this.connection.end();
 		this.connection = null;
+	}
+
+	async isConnectionAlive() {
+		if (!this.connection) {
+			return false;
+		}
+		try {
+			await this.connection.ping();
+			return true;
+		} catch (error) {
+			console.error(error);
+			return false;
+		}
 	}
 }
 

@@ -6,13 +6,17 @@ if (process.argv.length < 5) {
 	process.exit(1);
 }
 
-const name = process.argv[2];
-const email = process.argv[3];
-const password = process.argv[4];
-const user: User = {
-	name,
-	email,
-	password,
-	roles: [{ role: Role.Admin, objectId: 0 }],
-};
-db.addUser(user).then((r: User) => console.log("created user: ", r));
+async function main() {
+	const name = process.argv[2];
+	const email = process.argv[3];
+	const password = process.argv[4];
+	const user: User = {
+		name,
+		email,
+		password,
+		roles: [{ role: Role.Admin, objectId: 0 }],
+	};
+	await db.addUser(user).then((r: User) => console.log("created user: ", r));
+}
+
+void main();
