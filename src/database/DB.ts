@@ -18,8 +18,8 @@ import dbModel from "./dbModel";
 class DB {
 	private connection: mysql.Connection | null;
 	private connectionTimeout: NodeJS.Timeout | null;
-	config: typeof config;
-	initialized: Promise<void>;
+	private config: typeof config;
+	private initialized: Promise<boolean>;
 
 	constructor(dbConfig = config) {
 		this.connection = null;
@@ -532,29 +532,15 @@ class DB {
 		}
 	}
 
-	async waitTillInitialized() {
+	async getConnection() {
+		this.clearConnectionTimeout();
 		await this.initialized;
+
+		return this.connection ?? (await this._getConnection());
 	}
 
-	async getConnection() {
-		// console.log("Getting connection");
-
-		// TODO Make sure the database is initialized before trying to get a connection.
-		this.clearConnectionTimeout();
-
-		if (this.connection) {
-			// console.log("Cached connection");
-			return this.connection;
-		}
-
-		await this.waitTillInitialized();
-
-		// await new Promise((resolve) => setTimeout(resolve, 100));
-
-		// console.log("Getting connection");
-		const connection = await this._getConnection();
-
-		return connection;
+	async waitTillInitialized() {
+		await this.initialized;
 	}
 
 	async _getConnection(setUse = true) {
@@ -577,8 +563,6 @@ class DB {
 
 	async initializeDatabase() {
 		try {
-			// console.log("Initializing database");
-
 			const connection =
 				this.connection ?? (await this._getConnection(false));
 
@@ -594,16 +578,7 @@ class DB {
 				)
 			);
 
-			const defaultAdmin: User = {
-				name: "admin",
-				email: "a@jwt.com",
-				password: "admin",
-
-				// TODO no objectId hmm...
-				roles: [{ role: Role.Admin, objectId: 0 }],
-			};
-
-			await this.addUser(defaultAdmin);
+			return true;
 		} catch (err) {
 			// TODO if (!(err instanceof Error)) return;
 			console.error(
@@ -615,6 +590,8 @@ class DB {
 					connection: this.config.db.connection,
 				})
 			);
+
+			return false;
 		} finally {
 			this.setCloseConnectionTimeout();
 		}

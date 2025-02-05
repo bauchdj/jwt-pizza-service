@@ -16,7 +16,7 @@ import {
 import createRandomString from "../src/utils/utils";
 import DatabaseTestContext from "./DatabaseTestContext";
 
-jest.setTimeout(config.db.connection.connectTimeout);
+// jest.setTimeout(config.db.connection.connectTimeout);
 
 describe("Database Tests", () => {
 	describe("Connection Tests", () => {
@@ -28,8 +28,8 @@ describe("Database Tests", () => {
 			);
 		});
 
-		jestIt("closes connection AFTER  10 timeout", async () => {
-			await testCloseConnectionAfterTimeout(10);
+		jestIt("closes connection AFTER  20 timeout", async () => {
+			await testCloseConnectionAfterTimeout(20);
 		});
 
 		jestIt("closes connection AFTER  100 timeout", async () => {
@@ -72,15 +72,11 @@ describe("Database Tests", () => {
 			);
 
 			const database = databaseTestContext.createDatabase();
-
-			expect(database).toBeDefined();
-
 			const databaseConnection = await database.getConnection();
-
-			expect(databaseConnection).toBeDefined();
-
 			const databaseIsActive = await database.isConnectionAlive();
 
+			expect(database).toBeDefined();
+			expect(databaseConnection).toBeDefined();
 			expect(databaseIsActive).toBe(true);
 
 			return database;
@@ -90,6 +86,7 @@ describe("Database Tests", () => {
 			const databaseIsActive = await database.isConnectionAlive();
 
 			expect(databaseIsActive).toBe(false);
+			await database.closeConnection();
 		}
 	});
 
