@@ -1,11 +1,4 @@
-import {
-	afterAll,
-	beforeAll,
-	describe,
-	expect,
-	jest,
-	it as jestIt,
-} from "@jest/globals";
+import { describe, expect, jest, it as jestIt } from "@jest/globals";
 import jwt from "jsonwebtoken";
 import config from "../src/config";
 import { DB } from "../src/database/DB";
@@ -28,59 +21,42 @@ jest.setTimeout(config.db.connection.connectTimeout);
 describe("Database Tests", () => {
 	describe("Connection Tests", () => {
 		jestIt("creates database, connects, closes connection", async () => {
-			const database = await createConnectionTestDatabase();
-
-			await database.closeConnection();
-
-			await testIfConnectionIsClosed(database);
-		});
-
-		describe("delayedAction", () => {
-			beforeAll(() => {
-				jest.useFakeTimers({ now: 0 });
-			});
-
-			afterAll(() => {
-				jest.useRealTimers();
-			});
-
-			jestIt(
-				"creates database, connects, closes connection AFTER timeout",
-				async () => {
-					const database = await createConnectionTestDatabase();
-					const advanceTimeBy = config.db.connection.connectTimeout;
-
-					const spySetCloseConnectionTimeout = jest.spyOn(
-						database,
-						"setCloseConnectionTimeout"
-					);
-
-					expect(spySetCloseConnectionTimeout).not.toHaveBeenCalled();
-
-					// // Advance the timers by 1 second (less than the delay)
-					// jest.advanceTimersByTime(advanceTimeBy - 1000);
-
-					// // The callback should not have been called yet
-					// expect(spySetCloseConnectionTimeout).not.toHaveBeenCalled();
-
-					// // Advance the timers by another second (total 2 seconds)
-					// jest.advanceTimersByTime(1000);
-
-					// // Now the callback should have been called
-					// expect(spySetCloseConnectionTimeout).toHaveBeenCalledTimes(
-					// 	1
-					// );
-
-					await testIfConnectionIsClosed(database);
+			await createDatabaseBeforeThenCheckIfConnectionIsClosedAfter(
+				async (database) => {
+					await database.closeConnection();
 				}
 			);
 		});
 
-		async function createConnectionTestDatabase() {
+		jestIt("closes connection AFTER timeout", async () => {
+			const timeout = 100;
+
+			await createDatabaseBeforeThenCheckIfConnectionIsClosedAfter(
+				async () => {
+					await new Promise((resolve) => setTimeout(resolve, 5000));
+				},
+				timeout
+			);
+		});
+
+		async function createDatabaseBeforeThenCheckIfConnectionIsClosedAfter(
+			closeConnection: (database: DB) => Promise<void>,
+			timeout?: number
+		) {
+			const database = await createConnectionTestDatabase(timeout);
+			const spy = jest.spyOn(database, "endConnection");
+
+			expect(spy).not.toHaveBeenCalled();
+			await closeConnection(database);
+			console.log("Finished waiting for connection to close");
+			expect(spy).toHaveBeenCalled();
+			await testIfConnectionIsClosed(database);
+		}
+
+		async function createConnectionTestDatabase(timeout?: number) {
 			const databaseTestContext = new DatabaseTestContext(
 				config,
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				async (database) => {}
+				timeout
 			);
 
 			const database = databaseTestContext.createDatabase();
@@ -94,8 +70,6 @@ describe("Database Tests", () => {
 			const databaseIsActive = await database.isConnectionAlive();
 
 			expect(databaseIsActive).toBe(true);
-
-			await database.closeConnection();
 
 			return database;
 		}
@@ -383,7 +357,11 @@ async function it(testName: string, test: (database: DB) => Promise<void>) {
 }
 
 function withDatabaseTest(test: (database: DB) => Promise<void>) {
-	const databaseTestContext = new DatabaseTestContext(config, test);
+	const databaseTestContext = new DatabaseTestContext(
+		config,
+		undefined,
+		test
+	);
 
 	return async () => {
 		try {

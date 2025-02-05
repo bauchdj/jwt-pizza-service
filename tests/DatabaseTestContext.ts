@@ -3,18 +3,26 @@ import { DB } from "../src/database/DB";
 import createRandomString from "../src/utils/utils";
 
 class DatabaseTestContext {
-	database: DB | null = null;
-	randomDatabase: string | null = null;
-	test: (database: DB) => Promise<void>;
+	private config: typeof config;
+	private closeConnectionTimeout: number;
+	private test?: (database: DB) => Promise<void>;
+
+	private database: DB | null = null;
+	private randomDatabase: string | null = null;
 
 	constructor(
 		dbConfig: typeof config,
-		test: (database: DB) => Promise<void>
+		closeConnectionTimeout?: number,
+		test?: (database: DB) => Promise<void>
 	) {
+		const connectTimeout = dbConfig.db.connection.connectTimeout;
+
+		this.config = dbConfig;
+		this.closeConnectionTimeout = closeConnectionTimeout ?? connectTimeout;
 		this.test = test;
 	}
 
-	async before(): Promise<void> {
+	public async before(): Promise<void> {
 		const database = this.createDatabase();
 
 		// REQURIED!!!
@@ -22,7 +30,7 @@ class DatabaseTestContext {
 		await database.waitTillInitialized();
 
 		// TestFn that gets passed to it() provided by jest
-		await this.test(database);
+		if (this.test) await this.test(database);
 	}
 
 	public createDatabase() {
@@ -33,6 +41,7 @@ class DatabaseTestContext {
 		const dbConfig = { ...config };
 
 		dbConfig.db.connection.database = randomDatabase;
+		dbConfig.db.connection.connectTimeout = this.closeConnectionTimeout;
 
 		const database = new DB(dbConfig);
 
@@ -41,11 +50,11 @@ class DatabaseTestContext {
 		return database;
 	}
 
-	async catch(error: unknown) {
+	public async catch(error: unknown) {
 		console.error(error);
 	}
 
-	async finally() {
+	public async finally() {
 		if (!this.database || !this.randomDatabase) {
 			console.error(new Error("Database or random database is not set"));
 
