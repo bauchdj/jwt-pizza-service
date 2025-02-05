@@ -59,7 +59,7 @@ jobs:
                       url: 'https://pizza-factory.cs329.click',
                       apiKey: '${{ secrets.FACTORY_API_KEY }}',
                     },
-                  };" > src/config.js
+                  };" > src/config.ts
 
             - name: Tests
               run: npm test
