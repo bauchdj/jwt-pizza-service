@@ -43,7 +43,7 @@ jobs:
 
             - name: Write config file
               run: |
-                  echo "module.exports = {
+                  echo "export default {
                     jwtSecret: '${{ secrets.JWT_SECRET }}',
                     db: {
                       connection: {
