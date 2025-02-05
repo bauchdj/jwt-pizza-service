@@ -537,7 +537,7 @@ class DB {
 	}
 
 	async getConnection() {
-		console.log("Getting connection");
+		// console.log("Getting connection");
 
 		// TODO Make sure the database is initialized before trying to get a connection.
 		this.clearConnectionTimeout();
@@ -577,7 +577,7 @@ class DB {
 
 	async initializeDatabase() {
 		try {
-			console.log("Initializing database");
+			// console.log("Initializing database");
 
 			const connection =
 				this.connection ?? (await this._getConnection(false));
@@ -635,15 +635,8 @@ class DB {
 	setCloseConnectionTimeout() {
 		this.clearConnectionTimeout();
 
-		console.log(
-			"Closing connection",
-			this.config.db.connection.connectTimeout
-		);
-
 		this.connectionTimeout = setTimeout(async () => {
-			console.log("Connection timeout!!!");
 			await this.endConnection();
-			console.log("Connection closed FROM timeout :)");
 		}, this.config.db.connection.connectTimeout);
 	}
 
@@ -654,12 +647,11 @@ class DB {
 
 	clearConnectionTimeout() {
 		if (this.connectionTimeout) clearTimeout(this.connectionTimeout);
-		// this.connectionTimeout = null;
+		this.connectionTimeout = null;
 	}
 
 	async endConnection() {
-		console.log("Ending connection");
-		console.trace();
+		// console.log("Ending connection");
 		if (!this.connection || !(await this.isConnectionAlive())) return;
 		await this.connection.end();
 		this.connection = null;

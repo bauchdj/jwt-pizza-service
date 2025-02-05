@@ -28,16 +28,29 @@ describe("Database Tests", () => {
 			);
 		});
 
-		jestIt("closes connection AFTER timeout", async () => {
-			const timeout = 100;
+		jestIt("closes connection AFTER  10 timeout", async () => {
+			await testCloseConnectionAfterTimeout(10);
+		});
 
+		jestIt("closes connection AFTER  100 timeout", async () => {
+			await testCloseConnectionAfterTimeout(100);
+		});
+
+		jestIt("closes connection AFTER  250 timeout", async () => {
+			await testCloseConnectionAfterTimeout(250);
+		});
+
+		async function testCloseConnectionAfterTimeout(timeout: number) {
 			await createDatabaseBeforeThenCheckIfConnectionIsClosedAfter(
 				async () => {
-					await new Promise((resolve) => setTimeout(resolve, 5000));
+					await new Promise((resolve) => {
+						// + 10 or the tests will fail
+						return setTimeout(resolve, timeout + 10);
+					});
 				},
 				timeout
 			);
-		});
+		}
 
 		async function createDatabaseBeforeThenCheckIfConnectionIsClosedAfter(
 			closeConnection: (database: DB) => Promise<void>,
@@ -48,7 +61,6 @@ describe("Database Tests", () => {
 
 			expect(spy).not.toHaveBeenCalled();
 			await closeConnection(database);
-			console.log("Finished waiting for connection to close");
 			expect(spy).toHaveBeenCalled();
 			await testIfConnectionIsClosed(database);
 		}
@@ -102,13 +114,13 @@ describe("Database Tests", () => {
 
 	describe("User Operations", () => {
 		void it("should add user", async (database) => {
-			const { dbUser, user } = await addTestUser(database);
+			const { dbUser, user } = await addTestUser(database, Role.Diner);
 
 			expect(dbUser.roles).toBe(user.roles);
 		});
 
 		void it("should fail to get user by email and password", async (database) => {
-			const user = createUserObject();
+			const user = createUserObject(Role.Diner);
 
 			await expect(
 				async () => await database.getUser(user.email, user.password!)
@@ -116,7 +128,7 @@ describe("Database Tests", () => {
 		});
 
 		void it("should get user by email and password", async (database) => {
-			const { user } = await addTestUser(database);
+			const { user } = await addTestUser(database, Role.Diner);
 			const dbUser = await database.getUser(user.email, user.password!);
 
 			expect(dbUser.roles[0].role).toBe(user.roles[0].role);
@@ -124,7 +136,7 @@ describe("Database Tests", () => {
 		});
 
 		void it("should update user", async (database) => {
-			const { dbUser, user } = await addTestUser(database);
+			const { dbUser, user } = await addTestUser(database, Role.Diner);
 
 			const updatedUser: User = {
 				...user,
@@ -148,7 +160,7 @@ describe("Database Tests", () => {
 		});
 
 		void it("should login user and logout user", async (database) => {
-			const { user } = await addTestUser(database);
+			const { user } = await addTestUser(database, Role.Diner);
 			const dbUser = await database.getUser(user.email, user.password!);
 			const token = jwt.sign(user, config.jwtSecret);
 			let isLoggedIn = await database.isLoggedIn(token);
@@ -164,7 +176,7 @@ describe("Database Tests", () => {
 	});
 
 	describe("Franchise Operations", () => {
-		void it("should get franchises", async (database) => {
+		void it("should get franchises empty array", async (database) => {
 			const { user } = await addTestUser(database, Role.Admin);
 			const franchises = await database.getFranchises(user);
 
@@ -173,11 +185,8 @@ describe("Database Tests", () => {
 		});
 
 		void it("should create franchise", async (database) => {
-			const {
-				dbFranchise,
-				franchise,
-			}: { dbFranchise: Franchise; franchise: Franchise } =
-				await createTestFranchiseAndStore(database);
+			const { dbFranchise, franchise } =
+				await createTestFranchiseAndStore(database, Role.Diner);
 
 			expect(dbFranchise).toBeDefined();
 			expect(dbFranchise.name).toBe(franchise.name);
@@ -196,6 +205,81 @@ describe("Database Tests", () => {
 				async () => await database.createFranchise(franchise)
 			).rejects.toThrow();
 		});
+
+		void it("should get franchise after creation with franchise admin a diner user", async (database) => {
+			await createFranchiseAndStoreThenGetFranchise(database, Role.Diner);
+		});
+
+		void it("should get franchise after creation with franchise admin a admin user", async (database) => {
+			await createFranchiseAndStoreThenGetFranchise(database, Role.Admin);
+		});
+
+		void it("should get franchise by user id", async (database) => {
+			// invalid user id
+			const id = -1;
+			const franchisesEmpty = await database.getUserFranchises(id);
+
+			expect(franchisesEmpty).toBeDefined();
+			expect(franchisesEmpty.length).toBe(0);
+
+			const { dbUser, dbFranchise } = await createTestFranchiseAndStore(
+				database,
+				Role.Franchisee
+			);
+
+			const franchises = await database.getUserFranchises(dbUser.id!);
+
+			expect(franchises).toBeDefined();
+			expect(franchises.length).toBe(1);
+			expect(franchises[0].name).toBe(dbFranchise.name);
+		});
+
+		void it("should delete franchise", async (database) => {
+			const { dbUser, dbFranchise } = await createTestFranchiseAndStore(
+				database,
+				Role.Diner
+			);
+
+			await database.deleteFranchise(dbFranchise.id!);
+
+			const franchises = await database.getFranchises(dbUser);
+
+			expect(franchises).toBeDefined();
+			expect(franchises.length).toBe(0);
+		});
+
+		void it("should delete store on franchise", async (database) => {
+			const { dbFranchise, dbStore } = await createTestFranchiseAndStore(
+				database,
+				Role.Diner
+			);
+
+			await database.deleteStore(dbFranchise.id!, dbStore.id!);
+
+			const franchise = await database.getFranchise(dbFranchise);
+			const stores = franchise.stores;
+
+			expect(stores).toBeDefined();
+			expect(stores.length).toBe(0);
+		});
+
+		async function createFranchiseAndStoreThenGetFranchise(
+			database: DB,
+			role: RoleValueType
+		) {
+			const { dbUser, dbFranchise, dbStore } =
+				await createTestFranchiseAndStore(database, role);
+
+			const franchises = await database.getFranchises(dbUser);
+			const stores = franchises[0].stores;
+
+			expect(franchises).toBeDefined();
+			expect(franchises.length).toBe(1);
+			expect(franchises[0].name).toBe(dbFranchise.name);
+			expect(stores).toBeDefined();
+			expect(stores.length).toBe(1);
+			expect(stores[0].name).toBe(dbStore.name);
+		}
 	});
 
 	describe("Order Operations", () => {
@@ -242,9 +326,7 @@ async function addTestMenuItem(database: DB) {
 	return { dbMenuItem, menuItem };
 }
 
-function createUserObject(role?: RoleValueType) {
-	role = role ?? Role.Diner;
-
+function createUserObject(role: RoleValueType) {
 	const roles: UserRole[] = [
 		{
 			role,
@@ -262,8 +344,8 @@ function createUserObject(role?: RoleValueType) {
 	return user;
 }
 
-async function createTestFranchiseAndStore(database: DB) {
-	const { dbUser } = await addTestUser(database, Role.Diner);
+async function createTestFranchiseAndStore(database: DB, role: RoleValueType) {
+	const { dbUser } = await addTestUser(database, role);
 	const { dbUser: dbAdminUser } = await addTestUser(database, Role.Admin);
 
 	const { dbUser: dbFranchiseUser } = await addTestUser(
@@ -296,7 +378,7 @@ async function createTestFranchiseAndStore(database: DB) {
 }
 
 function createFranciseInstanceFromUserArray(admins: User[]): Franchise {
-	const name = "Test Franchise" + createRandomString(5);
+	const name = `Test Franchise ${createRandomString(5)}`;
 
 	return {
 		name,
@@ -307,7 +389,8 @@ function createFranciseInstanceFromUserArray(admins: User[]): Franchise {
 
 async function addTestDinerOrder(database: DB) {
 	const { dbStore, dbFranchise, dbUser } = await createTestFranchiseAndStore(
-		database
+		database,
+		Role.Diner
 	);
 
 	const { dbMenuItem } = await addTestMenuItem(database);
@@ -338,7 +421,7 @@ async function addTestDinerOrder(database: DB) {
 	};
 }
 
-async function addTestUser(database: DB, role?: RoleValueType) {
+async function addTestUser(database: DB, role: RoleValueType) {
 	const user: User = createUserObject(role);
 	const dbUser = await database.addUser(user);
 
