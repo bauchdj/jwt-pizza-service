@@ -7,7 +7,7 @@
 	"scripts": {
 		"clean": "rm -rf ./dist",
 		"build": "npm run clean && tsc && cp ./src/version.json ./dist",
-		"start": "npm run build && node dist/src/index.js",
+		"start": "tsx src/index.ts",
 		"dev": "tsx watch src/index.ts",
 		"lint": "eslint .",
 		"test": "jest"
