@@ -14,7 +14,10 @@ import {
 	UserRole,
 } from "../../src/model/model";
 import createRandomString from "../../src/utils/utils";
-import DatabaseTestContext from "../utils/DatabaseTestContext";
+import {
+	DatabaseTestContext,
+	withDatabaseTest,
+} from "../utils/DatabaseTestContext";
 
 // jest.setTimeout(config.db.connection.connectTimeout);
 
@@ -56,13 +59,19 @@ describe("Database Tests", () => {
 			closeConnection: (database: DB) => Promise<void>,
 			timeout?: number
 		) {
-			const database = await createConnectionTestDatabase(timeout);
-			const spy = jest.spyOn(database, "endConnection");
+			const { database, databaseTestContext } =
+				await createConnectionTestDatabase(timeout);
 
-			expect(spy).not.toHaveBeenCalled();
-			await closeConnection(database);
-			expect(spy).toHaveBeenCalled();
-			await testIfConnectionIsClosed(database);
+			try {
+				const spy = jest.spyOn(database, "endConnection");
+
+				expect(spy).not.toHaveBeenCalled();
+				await closeConnection(database);
+				expect(spy).toHaveBeenCalled();
+				await testIfConnectionIsClosed(database);
+			} finally {
+				await databaseTestContext.finally();
+			}
 		}
 
 		async function createConnectionTestDatabase(timeout?: number) {
@@ -79,7 +88,7 @@ describe("Database Tests", () => {
 			expect(databaseConnection).toBeDefined();
 			expect(databaseIsActive).toBe(true);
 
-			return database;
+			return { database, databaseTestContext };
 		}
 
 		async function testIfConnectionIsClosed(database: DB) {
@@ -434,19 +443,4 @@ async function it(testName: string, testFn: (database: DB) => Promise<void>) {
 	const databaseTestFn = withDatabaseTest(testFn);
 
 	jestIt(testName, databaseTestFn);
-}
-
-function withDatabaseTest(test: (database: DB) => Promise<void>) {
-	const databaseTestContext = new DatabaseTestContext(test);
-
-	return async () => {
-		try {
-			await databaseTestContext.before();
-		} catch (error) {
-			await databaseTestContext.catch(error);
-			throw error;
-		} finally {
-			await databaseTestContext.finally();
-		}
-	};
 }

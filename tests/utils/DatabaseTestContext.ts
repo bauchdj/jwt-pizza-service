@@ -1,10 +1,10 @@
 import config from "../../src/config";
 import { DB } from "../../src/database/DB";
-import createRandomString from "../../src/utils/utils";
+import { generateRandomDatabaseName } from "../../src/utils/utils";
 
 class DatabaseTestContext {
-	private closeConnectionTimeout: number;
 	private test?: (database: DB) => Promise<void>;
+	private closeConnectionTimeout: number;
 
 	private database: DB | null = null;
 	private randomDatabase: string | null = null;
@@ -22,16 +22,12 @@ class DatabaseTestContext {
 	public async before(): Promise<void> {
 		const database = this.createDatabase();
 
-		// REQURIED!!!
-		// this makes sure that the database is initialization happens preventing the connection to finish before the tests do...
-		await database.waitTillInitialized();
-
 		// TestFn that gets passed to it() provided by jest
 		if (this.test) await this.test(database);
 	}
 
 	public createDatabase() {
-		const randomDatabase = createRandomString(10).toLowerCase();
+		const randomDatabase = generateRandomDatabaseName();
 
 		this.randomDatabase = randomDatabase;
 
@@ -61,9 +57,23 @@ class DatabaseTestContext {
 		const connection = await this.database.getConnection();
 
 		await this.database.dropDatabase(connection, this.randomDatabase);
-
 		await this.database.closeConnection();
 	}
 }
 
-export default DatabaseTestContext;
+function withDatabaseTest(test: (database: DB) => Promise<void>) {
+	const databaseTestContext = new DatabaseTestContext(test);
+
+	return async () => {
+		try {
+			await databaseTestContext.before();
+		} catch (error) {
+			await databaseTestContext.catch(error);
+			throw error;
+		} finally {
+			await databaseTestContext.finally();
+		}
+	};
+}
+
+export { DatabaseTestContext, withDatabaseTest };
