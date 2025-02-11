@@ -88,7 +88,12 @@ const config = [
 		languageOptions: {
 			parserOptions: {
 				projectService: {
-					allowDefaultProject: ["*.js", "tests/*"],
+					allowDefaultProject: [
+						"*.js",
+						"*.ts",
+						"tests/utils/*",
+						"tests/database/*",
+					],
 					defaultProject: "tsconfig.json",
 				},
 				tsconfigRootDir: import.meta.dirname,

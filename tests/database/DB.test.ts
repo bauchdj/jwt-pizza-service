@@ -1,7 +1,7 @@
 import { describe, expect, jest, it as jestIt } from "@jest/globals";
 import jwt from "jsonwebtoken";
-import config from "../src/config";
-import { DB } from "../src/database/DB";
+import config from "../../src/config";
+import { DB } from "../../src/database/DB";
 import {
 	DinerOrder,
 	Franchise,
@@ -12,9 +12,9 @@ import {
 	Store,
 	User,
 	UserRole,
-} from "../src/model/model";
-import createRandomString from "../src/utils/utils";
-import DatabaseTestContext from "./DatabaseTestContext";
+} from "../../src/model/model";
+import createRandomString from "../../src/utils/utils";
+import DatabaseTestContext from "../utils/DatabaseTestContext";
 
 // jest.setTimeout(config.db.connection.connectTimeout);
 
@@ -67,7 +67,7 @@ describe("Database Tests", () => {
 
 		async function createConnectionTestDatabase(timeout?: number) {
 			const databaseTestContext = new DatabaseTestContext(
-				config,
+				undefined,
 				timeout
 			);
 
@@ -430,18 +430,14 @@ async function addTestUser(database: DB, role: RoleValueType) {
 	return { dbUser, user };
 }
 
-async function it(testName: string, test: (database: DB) => Promise<void>) {
-	const testFn = withDatabaseTest(test);
+async function it(testName: string, testFn: (database: DB) => Promise<void>) {
+	const databaseTestFn = withDatabaseTest(testFn);
 
-	jestIt(testName, testFn);
+	jestIt(testName, databaseTestFn);
 }
 
 function withDatabaseTest(test: (database: DB) => Promise<void>) {
-	const databaseTestContext = new DatabaseTestContext(
-		config,
-		undefined,
-		test
-	);
+	const databaseTestContext = new DatabaseTestContext(test);
 
 	return async () => {
 		try {

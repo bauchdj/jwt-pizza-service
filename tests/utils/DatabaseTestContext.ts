@@ -1,9 +1,8 @@
-import config from "../src/config";
-import { DB } from "../src/database/DB";
-import createRandomString from "../src/utils/utils";
+import config from "../../src/config";
+import { DB } from "../../src/database/DB";
+import createRandomString from "../../src/utils/utils";
 
 class DatabaseTestContext {
-	private config: typeof config;
 	private closeConnectionTimeout: number;
 	private test?: (database: DB) => Promise<void>;
 
@@ -11,13 +10,11 @@ class DatabaseTestContext {
 	private randomDatabase: string | null = null;
 
 	constructor(
-		dbConfig: typeof config,
-		closeConnectionTimeout?: number,
-		test?: (database: DB) => Promise<void>
+		test?: (database: DB) => Promise<void>,
+		closeConnectionTimeout?: number
 	) {
-		const connectTimeout = dbConfig.db.connection.connectTimeout;
+		const connectTimeout = config.db.connection.connectTimeout;
 
-		this.config = dbConfig;
 		this.closeConnectionTimeout = closeConnectionTimeout ?? connectTimeout;
 		this.test = test;
 	}
