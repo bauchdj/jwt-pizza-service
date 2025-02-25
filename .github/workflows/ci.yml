@@ -81,7 +81,7 @@ jobs:
               run: |
                   # Build JavaScript
                   npm run build
-                  echo ""
+                  echo "Built to dist/"
 
                   # Create the docker-dist directory
                   mkdir docker-dist

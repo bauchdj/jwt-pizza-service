@@ -64,6 +64,8 @@ class DB {
 		const connection = await this.getConnection();
 
 		try {
+			// TODO check if user already exists
+
 			const hashedPassword = await argon2.hash(user.password!);
 
 			const userResult = await this.query<mysql.ResultSetHeader>(
