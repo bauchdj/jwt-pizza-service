@@ -91,8 +91,8 @@ jobs:
 
                   # Copy necessary files to the docker-dist directory
                   cp Dockerfile docker-dist
-                  cp -r docker-dist/src/* docker-dist
-                  cp docker-dist/version.json docker-dist
+                  cp -r dist/src/* docker-dist
+                  cp dist/version.json docker-dist
                   cp package.json docker-dist
                   cp package-lock.json docker-dist
 
