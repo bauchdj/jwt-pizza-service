@@ -77,39 +77,39 @@ jobs:
                   color=$(echo "$coverage < 80" | bc | awk '{if ($1) print "red"; else print "green"}')
                   curl -s -X POST "https://badge.cs329.click/badge/${{ github.repository_owner }}/jwtpizzaservicecoverage?label=Coverage&value=$coverage%25&color=$color" -H "authorization: bearer ${{ secrets.FACTORY_API_KEY }}" -o /dev/null
 
-            - name: Create dist
+            - name: Create dist and docker-dist
               run: |
                   # Build JavaScript
                   npm run build
                   echo ""
 
-                  # Create the dist directory
-                  mkdir dist
+                  # Create the docker-dist directory
+                  mkdir docker-dist
 
-                  # Copy necessary files to the dist directory
-                  cp Dockerfile dist
-                  cp -r dist/src/* dist
-                  cp dist/version.json dist
-                  cp package.json dist
-                  cp package-lock.json dist
+                  # Copy necessary files to the docker-dist directory
+                  cp Dockerfile docker-dist
+                  cp -r docker-dist/src/* docker-dist
+                  cp docker-dist/version.json docker-dist
+                  cp package.json docker-dist
+                  cp package-lock.json docker-dist
 
-                  # Change package.json type to commonjs in dist directory
-                  jq '.type="commonjs"' dist/package.json > dist/package.json.tmp && mv dist/package.json.tmp dist/package.json
+                  # Change package.json type to commonjs in docker-dist directory
+                  jq '.type="commonjs"' docker-dist/package.json > docker-dist/package.json.tmp && mv docker-dist/package.json.tmp docker-dist/package.json
 
                   # Update config.js for Docker compatibility
-                  sed -i.bak 's/host: "127.0.0.1"/host: "host.docker.internal"/' dist/config.js
-                  rm dist/config.js.bak
+                  sed -i.bak 's/host: "127.0.0.1"/host: "host.docker.internal"/' docker-dist/config.js
+                  rm docker-dist/config.js.bak
 
                   # Replace DB credentials in config.js
-                  sed -i "s/root/${{ secrets.DB_USERNAME }}/g" dist/config.js
-                  sed -i "s/tempdbpassword/${{ secrets.DB_PASSWORD }}/g" dist/config.js
-                  sed -i "s/127.0.0.1/${{ secrets.DB_HOSTNAME }}/g" dist/config.js
+                  sed -i "s/root/${{ secrets.DB_USERNAME }}/g" docker-dist/config.js
+                  sed -i "s/tempdbpassword/${{ secrets.DB_PASSWORD }}/g" docker-dist/config.js
+                  sed -i "s/127.0.0.1/${{ secrets.DB_HOSTNAME }}/g" docker-dist/config.js
 
-            - name: Update distribution artifact
+            - name: Update docker-distribution artifact
               uses: actions/upload-artifact@v4
               with:
                   name: package
-                  path: dist/
+                  path: docker-dist/
 
     deploy:
         runs-on: ubuntu-latest
