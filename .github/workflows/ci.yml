@@ -100,8 +100,8 @@ jobs:
                   jq '.type="commonjs"' docker-dist/package.json > docker-dist/package.json.tmp && mv docker-dist/package.json.tmp docker-dist/package.json
 
                   # Update config.js for Docker compatibility
-                  sed -i.bak 's/host: "127.0.0.1"/host: "host.docker.internal"/' docker-dist/config.js
-                  rm docker-dist/config.js.bak
+                  # sed -i.bak 's/host: "127.0.0.1"/host: "host.docker.internal"/' docker-dist/config.js
+                  # rm docker-dist/config.js.bak
 
                   # Replace DB credentials in config.js
                   sed -i "s/root/${{ secrets.DB_USERNAME }}/g" docker-dist/config.js
