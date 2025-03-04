@@ -60,7 +60,7 @@ jobs:
                       "url": "https://pizza-factory.cs329.click",
                       "apiKey": "${{ secrets.FACTORY_API_KEY }}"
                     }
-                  };
+                  }
                   EOF
 
             - name: Ensure dbConfig.json exists
