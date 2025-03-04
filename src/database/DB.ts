@@ -64,7 +64,19 @@ class DB {
 		const connection = await this.getConnection();
 
 		try {
-			// TODO check if user already exists
+			try {
+				const dbUserFromGet = await this.getUserByEmail(user.email);
+
+				if (dbUserFromGet) {
+					throw new StatusCodeError("user already exists", 409);
+				}
+			} catch (error: unknown) {
+				if ((error as StatusCodeError).statusCode === 404) {
+					// user does not exist
+				} else {
+					throw error;
+				}
+			}
 
 			const hashedPassword = await argon2.hash(user.password!);
 
@@ -116,13 +128,7 @@ class DB {
 		const connection = await this.getConnection();
 
 		try {
-			const userResult = (await this.query<mysql.RowDataPacket[]>(
-				connection,
-				`SELECT * FROM user WHERE email=?`,
-				[email]
-			)) as User[];
-
-			const user = userResult[0];
+			const user = await this.getUserByEmail(email);
 
 			if (!user || !(await argon2.verify(user.password!, password))) {
 				throw new StatusCodeError("unknown user", 404);
@@ -140,6 +146,24 @@ class DB {
 			});
 
 			return { ...user, roles: roles, password: undefined };
+		} finally {
+			this.setCloseConnectionTimeout();
+		}
+	}
+
+	async getUserByEmail(email: string): Promise<User> {
+		const connection = await this.getConnection();
+
+		try {
+			const userResult = (await this.query<mysql.RowDataPacket[]>(
+				connection,
+				`SELECT * FROM user WHERE email=?`,
+				[email]
+			)) as User[];
+
+			const user = userResult[0];
+
+			return user;
 		} finally {
 			this.setCloseConnectionTimeout();
 		}
@@ -534,15 +558,39 @@ class DB {
 		}
 	}
 
+	async addAdminUser() {
+		await this.initialized;
+
+		const roles: UserRole[] = [
+			{
+				role: Role.Admin,
+				objectId: 1,
+			},
+		];
+
+		const adminUser: User = {
+			name: "常用名字",
+			roles,
+			email: "a@jwt.com",
+			password: "admin",
+		};
+
+		try {
+			await this.addUser(adminUser);
+		} catch (error: unknown) {
+			if ((error as StatusCodeError).statusCode === 409) {
+				// user already exists
+			} else {
+				throw error;
+			}
+		}
+	}
+
 	async getConnection() {
 		this.clearConnectionTimeout();
 		await this.initialized;
 
 		return this.connection ?? (await this._getConnection());
-	}
-
-	async waitTillInitialized() {
-		await this.initialized;
 	}
 
 	async _getConnection(setUse = true) {

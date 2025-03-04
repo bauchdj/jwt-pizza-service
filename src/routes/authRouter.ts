@@ -2,7 +2,7 @@ import express, { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import config from "../config";
 import { db } from "../database/database";
-import { asyncHandler } from "../endpointHelper";
+import { asyncHandler, StatusCodeError } from "../endpointHelper";
 import { Role, RoleValueType, User } from "../model/model";
 import { ExtendedRouter, RequestUser } from "./RouterModels";
 
@@ -122,16 +122,26 @@ authRouter.post(
 				.json({ message: "name, email, and password are required" });
 		}
 
-		const user = await db.addUser({
-			name,
-			email,
-			password,
-			roles: [{ role: Role.Diner, objectId: 0 }],
-		});
+		try {
+			const user = await db.addUser({
+				name,
+				email,
+				password,
+				roles: [{ role: Role.Diner, objectId: 0 }],
+			});
 
-		const token = await setAuth(user);
+			const token = await setAuth(user);
 
-		res.json({ user, token });
+			res.json({ user, token });
+		} catch (error: unknown) {
+			if (error instanceof StatusCodeError) {
+				return res
+					.status(error.statusCode)
+					.json({ message: error.message });
+			}
+
+			throw error;
+		}
 	}) as express.RequestHandler)
 );
 

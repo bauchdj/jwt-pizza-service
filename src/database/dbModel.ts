@@ -1,3 +1,14 @@
+const tables = [
+	"auth",
+	"user",
+	"menu",
+	"franchise",
+	"store",
+	"userRole",
+	"dinerOrder",
+	"orderItem",
+];
+
 const tableCreateStatements = [
 	`CREATE TABLE IF NOT EXISTS auth (
     token VARCHAR(512) PRIMARY KEY,
@@ -62,4 +73,4 @@ const tableCreateStatements = [
   )`,
 ];
 
-export default { tableCreateStatements };
+export default { tables, tableCreateStatements };
