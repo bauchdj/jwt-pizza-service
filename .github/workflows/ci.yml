@@ -106,8 +106,8 @@ jobs:
 
                   # Update dbConfig.json with new values
                   jq --arg host "$DB_HOSTNAME" --arg user "$DB_USERNAME" --arg password "$DB_PASSWORD" \
-                    '.host = $host | .user = $user | .password = $password' \
-                    $DOCKER_DIR/dbConfig.json > $DOCKER_DIR/dbConfig.json.tmp && mv $DOCKER_DIR/dbConfig.json.tmp $DOCKER_DIR/dbConfig.json
+                     '.db.connection.host = $host | .db.connection.user = $user | .db.connection.password = $password' \
+                     $DOCKER_DIR/dbConfig.json > $DOCKER_DIR/dbConfig.json.tmp && mv $DOCKER_DIR/dbConfig.json.tmp $DOCKER_DIR/dbConfig.json
 
             - name: Update docker-distribution artifact
               uses: actions/upload-artifact@v4
@@ -155,6 +155,6 @@ jobs:
                   docker build --platform=linux/arm64 -t $ECR_REGISTRY/$ECR_REPOSITORY --push .
                   echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:latest" >>  $GITHUB_OUTPUT
 
-            - name: Deploy new container
-              run: |
-                  aws ecs update-service --cluster jwt-pizza-service --service jwt-pizza-service --force-new-deployment
+            # - name: Deploy new container
+            #   run: |
+            #       aws ecs update-service --cluster jwt-pizza-service --service jwt-pizza-service --force-new-deployment
