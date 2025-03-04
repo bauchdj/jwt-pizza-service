@@ -18,7 +18,7 @@ type Config = {
 	};
 };
 
-const jsonConfig = dbConfig as Config;
+const jsonConfig = dbConfig as unknown as Config;
 
 const config: Config = {
 	jwtSecret: jsonConfig.jwtSecret,
