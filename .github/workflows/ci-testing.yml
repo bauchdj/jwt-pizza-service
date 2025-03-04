@@ -73,7 +73,7 @@ jobs:
 
                   # Update dbConfig.json with new values
                   jq --arg host "$DB_HOSTNAME" --arg user "$DB_USERNAME" --arg password "$DB_PASSWORD" \
-                    '.host = $host | .user = $user | .password = $password' \
-                    $DOCKER_DIR/dbConfig.json > $DOCKER_DIR/dbConfig.json.tmp && mv $DOCKER_DIR/dbConfig.json.tmp $DOCKER_DIR/dbConfig.json
+                     '.db.connection.host = $host | .db.connection.user = $user | .db.connection.password = $password' \
+                     $DOCKER_DIR/dbConfig.json > $DOCKER_DIR/dbConfig.json.tmp && mv $DOCKER_DIR/dbConfig.json.tmp $DOCKER_DIR/dbConfig.json
 
                   cat $DOCKER_DIR/dbConfig.json
