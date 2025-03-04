@@ -1,0 +1,79 @@
+name: CI Pipeline Testing
+
+on:
+    push:
+        branches:
+            - main
+    workflow_dispatch:
+jobs:
+    build:
+        name: Build
+        runs-on: ubuntu-latest
+        outputs:
+            version: ${{ steps.set_version.outputs.version }}
+
+        steps:
+            - name: Checkout repo
+              uses: actions/checkout@v4
+
+            - name: Setup Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "23.x"
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Write config file
+              run: |
+                  cat > src/dbConfig.json <<EOF
+                  {
+                    "jwtSecret": "${{ secrets.JWT_SECRET }}",
+                    "db": {
+                      "connection": {
+                        "host": "127.0.0.1",
+                        "user": "root",
+                        "password": "tempdbpassword",
+                        "database": "${{ secrets.MYSQL_DB }}",
+                        "connectTimeout": 60000
+                      },
+                      "listPerPage": 10
+                    },
+                    "factory": {
+                      "url": "https://pizza-factory.cs329.click",
+                      "apiKey": "${{ secrets.FACTORY_API_KEY }}"
+                    }
+                  }
+                  EOF
+
+            - name: Create dist and docker-dist
+              env:
+                  DB_HOSTNAME: ${{ secrets.DB_HOSTNAME }}
+                  DB_USERNAME: ${{ secrets.DB_USERNAME }}
+                  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+              run: |
+                  set -ex  # -e: exit on error, -x: debug
+
+                  DOCKER_DIR=docker-dist
+
+                  # Build JavaScript
+                  npm run build
+
+                  mkdir $DOCKER_DIR
+
+                  # Copy the files to the docker directory 
+                  cp Dockerfile $DOCKER_DIR
+                  cp -r dist/src/* $DOCKER_DIR
+                  cp dist/version.json $DOCKER_DIR
+                  cp package.json $DOCKER_DIR
+                  cp package-lock.json $DOCKER_DIR
+
+                  # Change package.json type to commonjs in DOCKER_DIR directory
+                  jq '.type="commonjs"' $DOCKER_DIR/package.json > $DOCKER_DIR/package.json.tmp && mv $DOCKER_DIR/package.json.tmp $DOCKER_DIR/package.json
+
+                  # Update dbConfig.json with new values
+                  jq --arg host "$DB_HOSTNAME" --arg user "$DB_USERNAME" --arg password "$DB_PASSWORD" \
+                    '.host = $host | .user = $user | .password = $password' \
+                    $DOCKER_DIR/dbConfig.json > $DOCKER_DIR/dbConfig.json.tmp && mv $DOCKER_DIR/dbConfig.json.tmp $DOCKER_DIR/dbConfig.json
+
+                  cat $DOCKER_DIR/dbConfig.json
