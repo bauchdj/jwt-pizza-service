@@ -53,6 +53,8 @@ jq --arg host "$DB_HOSTNAME" --arg user "$DB_USERNAME" --arg password "$DB_PASSW
    '.db.connection.host = $host | .db.connection.user = $user | .db.connection.password = $password' \
    $DOCKER_DIR/dbConfig.json > $DOCKER_DIR/dbConfig.json.tmp && mv $DOCKER_DIR/dbConfig.json.tmp $DOCKER_DIR/dbConfig.json
 
+# cat $DOCKER_DIR/dbConfig.json
+
 # Build the docker image
 cd $DOCKER_DIR
 docker build -t $SERVICE_NAME .
