@@ -77,3 +77,6 @@ jobs:
                      $DOCKER_DIR/dbConfig.json > $DOCKER_DIR/dbConfig.json.tmp && mv $DOCKER_DIR/dbConfig.json.tmp $DOCKER_DIR/dbConfig.json
 
                   cat $DOCKER_DIR/dbConfig.json
+
+                  rm -rf dist
+                  mv $DOCKER_DIR dist
