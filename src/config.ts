@@ -1,19 +1,41 @@
-import config from "./dbConfig.json";
+import dbConfig from "./dbConfig.json";
 
-export default {
-	jwtSecret: config.jwtSecret,
+type Config = {
+	jwtSecret: string;
 	db: {
 		connection: {
-			host: config.db.connection.host,
-			user: config.db.connection.user,
-			password: config.db.connection.password,
-			database: config.db.connection.database,
-			connectTimeout: config.db.connection.connectTimeout,
+			host: string;
+			user: string;
+			password: string;
+			database: string;
+			connectTimeout: number;
+		};
+		listPerPage: number;
+	};
+	factory: {
+		url: string;
+		apiKey: string;
+	};
+};
+
+const jsonConfig = dbConfig as Config;
+
+const config: Config = {
+	jwtSecret: jsonConfig.jwtSecret,
+	db: {
+		connection: {
+			host: jsonConfig.db.connection.host,
+			user: jsonConfig.db.connection.user,
+			password: jsonConfig.db.connection.password,
+			database: jsonConfig.db.connection.database,
+			connectTimeout: jsonConfig.db.connection.connectTimeout,
 		},
-		listPerPage: config.db.listPerPage,
+		listPerPage: jsonConfig.db.listPerPage,
 	},
 	factory: {
-		url: config.factory.url,
-		apiKey: config.factory.apiKey,
+		url: jsonConfig.factory.url,
+		apiKey: jsonConfig.factory.apiKey,
 	},
 };
+
+export default config;

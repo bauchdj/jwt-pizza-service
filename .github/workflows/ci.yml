@@ -91,7 +91,6 @@ jobs:
                   set -ex  # -e: exit on error, -x: debug
 
                   DOCKER_DIR=docker-dist
-                  SERVICE_NAME=jwt-pizza-service
 
                   # Build JavaScript
                   npm run build
@@ -159,6 +158,6 @@ jobs:
                   docker build --platform=linux/arm64 -t $ECR_REGISTRY/$ECR_REPOSITORY --push .
                   echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:latest" >>  $GITHUB_OUTPUT
 
-            - name: Deploy new container
-              run: |
-                  aws ecs update-service --cluster jwt-pizza-service --service jwt-pizza-service --force-new-deployment
+            # - name: Deploy new container
+            #   run: |
+            #       aws ecs update-service --cluster jwt-pizza-service --service jwt-pizza-service --force-new-deployment
