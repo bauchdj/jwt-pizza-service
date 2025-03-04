@@ -38,71 +38,77 @@ jobs:
             - name: Install dependencies
               run: npm ci
 
-            # - name: Lint
-            #   run: npm run lint
+            - name: Lint
+              run: npm run lint
 
             - name: Write config file
               run: |
-                  echo "export default {
-                    jwtSecret: '${{ secrets.JWT_SECRET }}',
-                    db: {
-                      connection: {
-                        host: '127.0.0.1',
-                        user: 'root',
-                        password: 'tempdbpassword',
-                        database: '${{ secrets.MYSQL_DB }}',
-                        connectTimeout: 60000,
+                  cat > src/dbConfig.json <<EOF
+                  {
+                    "jwtSecret": "${{ secrets.JWT_SECRET }}",
+                    "db": {
+                      "connection": {
+                        "host": "127.0.0.1",
+                        "user": "root",
+                        "password": "tempdbpassword",
+                        "database": "${{ secrets.MYSQL_DB }}",
+                        "connectTimeout": 60000
                       },
-                      listPerPage: 10,
+                      "listPerPage": 10
                     },
-                    factory: {
-                      url: 'https://pizza-factory.cs329.click',
-                      apiKey: '${{ secrets.FACTORY_API_KEY }}',
-                    },
-                  };" > src/config.ts
+                    "factory": {
+                      "url": "https://pizza-factory.cs329.click",
+                      "apiKey": "${{ secrets.FACTORY_API_KEY }}"
+                    }
+                  };
+                  EOF
 
-            # - name: Tests
-            #   run: npm test
+            - name: Tests
+              run: npm test
 
-            # - name: set version
-            #   id: set_version
-            #   run: |
-            #       version=$(date +'%Y%m%d.%H%M%S')
-            #       echo "version=$version" >> "$GITHUB_OUTPUT"
-            #       printf '{"version": "%s" }' "$version" > src/version.json
+            - name: set version
+              id: set_version
+              run: |
+                  version=$(date +'%Y%m%d.%H%M%S')
+                  echo "version=$version" >> "$GITHUB_OUTPUT"
+                  printf '{"version": "%s" }' "$version" > src/version.json
 
-            # - name: Update coverage
-            #   run: |
-            #       coverage=$(jq '.total.lines.pct' coverage/coverage-summary.json)
-            #       color=$(echo "$coverage < 80" | bc | awk '{if ($1) print "red"; else print "green"}')
-            #       curl -s -X POST "https://badge.cs329.click/badge/${{ github.repository_owner }}/jwtpizzaservicecoverage?label=Coverage&value=$coverage%25&color=$color" -H "authorization: bearer ${{ secrets.FACTORY_API_KEY }}" -o /dev/null
+            - name: Update coverage
+              run: |
+                  coverage=$(jq '.total.lines.pct' coverage/coverage-summary.json)
+                  color=$(echo "$coverage < 80" | bc | awk '{if ($1) print "red"; else print "green"}')
+                  curl -s -X POST "https://badge.cs329.click/badge/${{ github.repository_owner }}/jwtpizzaservicecoverage?label=Coverage&value=$coverage%25&color=$color" -H "authorization: bearer ${{ secrets.FACTORY_API_KEY }}" -o /dev/null
 
             - name: Create dist and docker-dist
+              env:
+                  DB_HOSTNAME: ${{ secrets.DB_HOSTNAME }}
+                  DB_USERNAME: ${{ secrets.DB_USERNAME }}
+                  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
               run: |
                   set -ex  # -e: exit on error, -x: debug
 
+                  DOCKER_DIR=docker-dist
+                  SERVICE_NAME=jwt-pizza-service
+
                   # Build JavaScript
                   npm run build
-                  echo "Built to dist/"
 
-                  # Create the docker-dist directory
-                  mkdir docker-dist
-                  echo "Created docker-dist"
+                  mkdir $DOCKER_DIR
 
-                  # Copy necessary files to the docker-dist directory
-                  cp Dockerfile docker-dist
-                  cp -r dist/src/* docker-dist
-                  cp dist/version.json docker-dist
-                  cp package.json docker-dist
-                  cp package-lock.json docker-dist
+                  # Copy the files to the docker directory 
+                  cp Dockerfile $DOCKER_DIR
+                  cp -r dist/src/* $DOCKER_DIR
+                  cp dist/version.json $DOCKER_DIR
+                  cp package.json $DOCKER_DIR
+                  cp package-lock.json $DOCKER_DIR
 
-                  # Change package.json type to commonjs in docker-dist directory
-                  jq '.type="commonjs"' docker-dist/package.json > docker-dist/package.json.tmp && mv docker-dist/package.json.tmp docker-dist/package.json
+                  # Change package.json type to commonjs in DOCKER_DIR directory
+                  jq '.type="commonjs"' $DOCKER_DIR/package.json > $DOCKER_DIR/package.json.tmp && mv $DOCKER_DIR/package.json.tmp $DOCKER_DIR/package.json
 
-                  # Replace DB credentials in config.js
-                  sed -i "s/root/${{ secrets.DB_USERNAME }}/g" docker-dist/config.js
-                  sed -i "s/tempdbpassword/${{ secrets.DB_PASSWORD }}/g" docker-dist/config.js
-                  sed -i "s/127.0.0.1/${{ secrets.DB_HOSTNAME }}/g" docker-dist/config.js
+                  # Update dbConfig.json with new values
+                  jq --arg host "$DB_HOSTNAME" --arg user "$DB_USERNAME" --arg password "$DB_PASSWORD" \
+                    '.host = $host | .user = $user | .password = $password' \
+                    $DOCKER_DIR/dbConfig.json > $DOCKER_DIR/dbConfig.json.tmp && mv $DOCKER_DIR/dbConfig.json.tmp $DOCKER_DIR/dbConfig.json
 
             - name: Update docker-distribution artifact
               uses: actions/upload-artifact@v4

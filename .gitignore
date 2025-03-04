@@ -3,4 +3,5 @@
 .vscode
 coverage
 dist
-config.[t|j]s
+.env
+src/dbConfig.json

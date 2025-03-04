@@ -2,6 +2,10 @@
 
 set -e # Exit on error
 
+# JWT_SECRET, MYSQL_DB, FACTORY_API_KEY
+# DB_USERNAME, DB_PASSWORD, DB_HOSTNAME
+source .env
+
 DOCKER_DIR=docker-dist
 SERVICE_NAME=jwt-pizza-service
 PORT=80
@@ -10,30 +14,51 @@ PORT=80
 npm run build
 echo ""
 
-# Copy the files to the docker directory
 rm -rf $DOCKER_DIR
 mkdir $DOCKER_DIR
+
+# Copy the files to the docker directory 
 cp Dockerfile $DOCKER_DIR
 cp -r dist/src/* $DOCKER_DIR
 cp dist/version.json $DOCKER_DIR
 cp package.json $DOCKER_DIR
 cp package-lock.json $DOCKER_DIR
 
-# Change package.json type to commonjs
-jq '.type="commonjs"' package.json > "$DOCKER_DIR/package.json"
+# Override dbConfig.json to replicate GitHub action steps
+cat > $DOCKER_DIR/dbConfig.json <<EOF
+{
+  "jwtSecret": "$JWT_SECRET",
+  "db": {
+    "connection": {
+      "host": "127.0.0.1",
+      "user": "root",
+      "password": "tempdbpassword",
+      "database": "$MYSQL_DB",
+      "connectTimeout": 60000
+    },
+    "listPerPage": 10
+  },
+  "factory": {
+    "url": "https://pizza-factory.cs329.click",
+    "apiKey": "$FACTORY_API_KEY"
+  }
+}
+EOF
 
-# Update src/config.js to use host.docker.internal
-sed -i.bak 's/host: "127.0.0.1"/host: "host.docker.internal"/' "$DOCKER_DIR/config.js"
-rm "$DOCKER_DIR/config.js.bak"
+# Change package.json type to commonjs in DOCKER_DIR directory
+jq '.type="commonjs"' $DOCKER_DIR/package.json > $DOCKER_DIR/package.json.tmp && mv $DOCKER_DIR/package.json.tmp $DOCKER_DIR/package.json
 
-cd $DOCKER_DIR
-ls
-echo ""
+# Update dbConfig.json with new values
+jq --arg host "$DB_HOSTNAME" --arg user "$DB_USERNAME" --arg password "$DB_PASSWORD" \
+   '.db.connection.host = $host | .db.connection.user = $user | .db.connection.password = $password' \
+   $DOCKER_DIR/dbConfig.json > $DOCKER_DIR/dbConfig.json.tmp && mv $DOCKER_DIR/dbConfig.json.tmp $DOCKER_DIR/dbConfig.json
 
 # Build the docker image
+cd $DOCKER_DIR
 docker build -t $SERVICE_NAME .
+cd ..
 docker images -a
-echo ""
+echo "Built docker image $SERVICE_NAME"
 
 # Run the container
 docker run -d --name $SERVICE_NAME -p $PORT:$PORT $SERVICE_NAME
@@ -71,6 +96,7 @@ echo ""
 
 # Test the service
 if curl -s --fail http://localhost:$PORT; then
+  echo ""
   echo "Service is up and responding"
 else
   echo "Service test failed"
@@ -84,5 +110,5 @@ docker rm -fv $SERVICE_NAME
 docker rmi $SERVICE_NAME
 echo "Removed docker container and image"
 
-rm -rf docker-dist
-echo "Removed docker-dist"
+rm -rf $DOCKER_DIR
+echo "Removed $DOCKER_DIR"
