@@ -2,6 +2,7 @@ import express, { NextFunction, Request, Response } from "express";
 import config from "./config";
 import { StatusCodeError } from "./endpointHelper";
 import { requestMetricsMiddleware } from "./grafana/requestMetrics";
+import { latencyMetricsMiddleware } from "./grafana/latencyMetrics";
 import { startSystemMetricsCollection } from "./grafana/systemMetrics";
 import { authRouter, setAuthUser } from "./routes/authRouter";
 import franchiseRouter from "./routes/franchiseRouter";
@@ -10,11 +11,12 @@ import version from "./version.json";
 
 const app = express();
 
-startSystemMetricsCollection();
-
 app.use(express.json());
 app.use(requestMetricsMiddleware);
+app.use(latencyMetricsMiddleware);
 app.use(setAuthUser);
+
+startSystemMetricsCollection();
 
 app.use((req: Request, res: Response, next: NextFunction) => {
 	res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");

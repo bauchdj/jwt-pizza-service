@@ -38,11 +38,11 @@ const loginBatcher = new MetricBatcher<LoginMetric>(
 	60000 // Send every minute
 );
 
-export function sendLoginMetricSuccess() {
+export function pushLoginMetricSuccess() {
 	loginBatcher.push({ status: "success", value: 1 });
 }
 
-export function sendLoginMetricFailed() {
+export function pushLoginMetricFailed() {
 	loginBatcher.push({ status: "failed", value: 1 });
 }
 

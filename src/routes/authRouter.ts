@@ -4,9 +4,9 @@ import config from "../config";
 import { db } from "../database/database";
 import { asyncHandler, StatusCodeError } from "../endpointHelper";
 import {
+	pushLoginMetricFailed,
+	pushLoginMetricSuccess,
 	sendActiveUsersCount,
-	sendLoginMetricFailed,
-	sendLoginMetricSuccess,
 } from "../grafana/authMetrics";
 import { Role, RoleValueType, User } from "../model/model";
 import { ExtendedRouter, RequestUser } from "./RouterModels";
@@ -122,7 +122,7 @@ authRouter.post(
 		const { name, email, password } = req.body;
 
 		if (!name || !email || !password) {
-			void sendLoginMetricFailed();
+			void pushLoginMetricFailed();
 
 			return res
 				.status(400)
@@ -139,12 +139,12 @@ authRouter.post(
 
 			const token = await setAuth(user);
 
-			void sendLoginMetricSuccess();
+			void pushLoginMetricSuccess();
 
 			res.json({ user, token });
 		} catch (error: unknown) {
 			if (error instanceof StatusCodeError) {
-				void sendLoginMetricFailed();
+				void pushLoginMetricFailed();
 
 				return res
 					.status(error.statusCode)
@@ -166,11 +166,11 @@ authRouter.put(
 			const user = await db.getUser(email, password);
 			const token = await setAuth(user);
 
-			void sendLoginMetricSuccess();
+			void pushLoginMetricSuccess();
 
 			res.json({ user, token });
 		} catch (error: unknown) {
-			void sendLoginMetricFailed();
+			void pushLoginMetricFailed();
 
 			if (error instanceof StatusCodeError) {
 				res.status(error.statusCode).json({ message: error.message });

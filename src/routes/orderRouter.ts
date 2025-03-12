@@ -2,7 +2,13 @@ import express, { Response } from "express";
 import config from "../config";
 import { db } from "../database/database";
 import { asyncHandler, StatusCodeError } from "../endpointHelper";
-import { Role } from "../model/model";
+import { createEndpointLatencyMiddleware } from "../grafana/latencyMetrics";
+import {
+	pushOrderFailed,
+	pushOrderRevenue,
+	pushOrderSold,
+} from "../grafana/orderMetrics";
+import { DinerOrder, Role } from "../model/model";
 import { authRouter } from "./authRouter";
 import { ExtendedRouter, UserRequest } from "./RouterModels";
 
@@ -126,42 +132,67 @@ orderRouter.get(
 orderRouter.post(
 	"/",
 	authRouter.authenticateToken,
+	createEndpointLatencyMiddleware("create_order"),
 	asyncHandler((async (req: UserRequest, res: Response) => {
-		const orderReq = req.body;
-		const order = await db.addDinerOrder(req.user, orderReq);
+		try {
+			const orderReqBody = req.body;
 
-		const response = await fetch(`${config.factory.url}/api/order`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				authorization: `Bearer ${config.factory.apiKey}`,
-			},
-			body: JSON.stringify({
-				diner: {
-					id: req.user.id,
-					name: req.user.name,
-					email: req.user.email,
+			if (!orderReqBody) {
+				void pushOrderFailed();
+				throw new StatusCodeError("No order data provided", 400);
+			}
+
+			const order = await db.addDinerOrder(req.user, orderReqBody);
+
+			void pushOrderSold();
+			void pushOrderRevenue(calculateOrderTotal(orderReqBody));
+
+			const response = await fetch(`${config.factory.url}/api/order`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					authorization: `Bearer ${config.factory.apiKey}`,
 				},
-				order,
-			}),
-		});
-
-		const jsonResponse = await response.json();
-
-		if (response.ok) {
-			res.send({
-				order,
-				reportSlowPizzaToFactoryUrl: jsonResponse.reportUrl,
-				jwt: jsonResponse.jwt,
+				body: JSON.stringify({
+					diner: {
+						id: req.user.id,
+						name: req.user.name,
+						email: req.user.email,
+					},
+					order,
+				}),
 			});
-		} else {
-			res.status(500).send({
-				message: "Failed to fulfill order at factory",
-				reportPizzaCreationErrorToPizzaFactoryUrl:
-					jsonResponse.reportUrl,
-			});
+
+			const jsonResponse = await response.json();
+
+			if (response.ok) {
+				res.send({
+					order,
+					reportSlowPizzaToFactoryUrl: jsonResponse.reportUrl,
+					jwt: jsonResponse.jwt,
+				});
+			} else {
+				res.status(500).send({
+					message: "Failed to fulfill order at factory",
+					reportPizzaCreationErrorToPizzaFactoryUrl:
+						jsonResponse.reportUrl,
+				});
+			}
+		} catch (error) {
+			void pushOrderFailed();
+
+			if (error instanceof StatusCodeError) {
+				res.status(error.statusCode).json({ message: error.message });
+			} else {
+				res.status(500).json({ message: "Internal server error" });
+			}
 		}
 	}) as unknown as express.RequestHandler)
 );
+
+// Helper function to calculate order total
+function calculateOrderTotal(order: DinerOrder): number {
+	return order.items.reduce((total, item) => total + item.price, 0);
+}
 
 export default orderRouter;
