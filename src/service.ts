@@ -1,9 +1,9 @@
 import express, { NextFunction, Request, Response } from "express";
 import config from "./config";
 import { StatusCodeError } from "./endpointHelper";
-import { requestMetricsMiddleware } from "./grafana/requestMetrics";
 import { latencyMetricsMiddleware } from "./grafana/latencyMetrics";
-import { startSystemMetricsCollection } from "./grafana/systemMetrics";
+import { requestMetricsMiddleware } from "./grafana/requestMetrics";
+import systemMetrics from "./grafana/systemMetrics";
 import { authRouter, setAuthUser } from "./routes/authRouter";
 import franchiseRouter from "./routes/franchiseRouter";
 import orderRouter from "./routes/orderRouter";
@@ -16,7 +16,17 @@ app.use(requestMetricsMiddleware);
 app.use(latencyMetricsMiddleware);
 app.use(setAuthUser);
 
-startSystemMetricsCollection();
+// Start collecting system metrics
+systemMetrics.start();
+
+// Cleanup on process termination
+process.on("SIGTERM", () => {
+	systemMetrics.stop();
+});
+
+process.on("SIGINT", () => {
+	systemMetrics.stop();
+});
 
 app.use((req: Request, res: Response, next: NextFunction) => {
 	res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");

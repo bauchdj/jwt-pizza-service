@@ -23,15 +23,18 @@ class BatcherRegistry {
 	}
 }
 
+interface MetricBatcherConfig {
+	intervalMs?: number;
+}
+
 export class MetricBatcher<T> {
 	private queue: T[] = [];
 	private interval: NodeJS.Timeout;
 	private readonly sender: MetricSender<T>;
 
-	constructor(
-		sender: MetricSender<T>,
-		intervalMs: number = 60000 // Default to 1 minute
-	) {
+	constructor(sender: MetricSender<T>, config?: MetricBatcherConfig) {
+		const intervalMs = config?.intervalMs ?? 60000; // Default to 1 minute if not specified
+
 		this.sender = sender;
 		this.interval = setInterval(() => this.flush(), intervalMs);
 		BatcherRegistry.register(this);
@@ -42,6 +45,8 @@ export class MetricBatcher<T> {
 	}
 
 	async flush(): Promise<void> {
+		if (this.queue.length === 0) return;
+
 		await this.sender(this.queue);
 		this.queue = [];
 	}

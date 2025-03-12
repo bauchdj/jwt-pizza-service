@@ -7,8 +7,8 @@
 	"scripts": {
 		"clean": "rm -rf ./dist",
 		"build": "npm run clean && tsc && cp ./src/version.json ./dist",
-		"start": "tsx src/index.ts",
-		"dev": "tsx watch src/index.ts",
+		"start": "NODE_ENV=production tsx src/index.ts",
+		"dev": "NODE_ENV=development tsx watch src/index.ts",
 		"lint": "eslint .",
 		"test": "jest"
 	},

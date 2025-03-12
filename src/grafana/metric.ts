@@ -8,7 +8,8 @@ interface MetricAttribute {
 }
 
 interface DataPoint {
-	asInt: number;
+	asInt?: number;
+	asDouble?: number;
 	timeUnixNano: string;
 	attributes: MetricAttribute[];
 }
@@ -44,7 +45,9 @@ export interface Metric {
 interface MetadataToBuildMetric {
 	name: string;
 	value: number;
+	unit: string;
 	tags?: Record<string, string>;
+	useDouble?: boolean;
 }
 
 class MetricsClient {
@@ -63,55 +66,75 @@ class MetricsClient {
 	}
 
 	private getCurrentTimeNano(): string {
-		return (Date.now() * 1_000_000).toString();
+		return (Date.now() * 1e6).toString();
 	}
 
 	private createAttributes(tags?: Record<string, string>): MetricAttribute[] {
-		const baseAttributes: MetricAttribute[] = [
+		const attributes: MetricAttribute[] = [
 			{
 				key: "source",
-				value: { stringValue: this.source },
+				value: {
+					stringValue: this.source,
+				},
 			},
 		];
 
 		if (tags) {
-			return [
-				...baseAttributes,
-				...Object.entries(tags).map(([key, value]) => ({
+			Object.entries(tags).forEach(([key, value]) => {
+				attributes.push({
 					key,
-					value: { stringValue: value },
-				})),
-			];
+					value: {
+						stringValue: value,
+					},
+				});
+			});
 		}
 
-		return baseAttributes;
+		return attributes;
 	}
 
-	createResourceMetrics<T extends Metric>(metrics: T[]): ResourceMetrics<T> {
+	private createResourceMetrics<T extends Metric>(
+		metrics: T[]
+	): ResourceMetrics<T> {
 		return {
 			resourceMetrics: [
 				{
-					scopeMetrics: [{ metrics }],
+					scopeMetrics: [
+						{
+							metrics,
+						},
+					],
 				},
 			],
 		};
 	}
 
-	buildSumMetric({ name, value, tags }: MetadataToBuildMetric): SumMetric {
+	buildSumMetric({
+		name,
+		value,
+		unit,
+		tags,
+		useDouble = false,
+	}: MetadataToBuildMetric): SumMetric {
 		const timeUnixNano = this.getCurrentTimeNano();
 		const attributes = this.createAttributes(tags);
 
+		const dataPoint: DataPoint = {
+			timeUnixNano,
+			attributes,
+		};
+
+		if (useDouble) {
+			dataPoint.asDouble = value;
+		} else {
+			dataPoint.asInt = Math.round(value);
+		}
+
 		const sumMetric: SumMetric = {
 			name,
-			unit: "count",
+			unit,
 			sum: {
-				dataPoints: [
-					{
-						asInt: value,
-						timeUnixNano,
-						attributes,
-					},
-				],
+				dataPoints: [dataPoint],
 				aggregationTemporality: "AGGREGATION_TEMPORALITY_CUMULATIVE",
 				isMonotonic: true,
 			},
@@ -123,38 +146,37 @@ class MetricsClient {
 	buildGaugeMetric({
 		name,
 		value,
+		unit,
 		tags,
+		useDouble = true,
 	}: MetadataToBuildMetric): GaugeMetric {
 		const timeUnixNano = this.getCurrentTimeNano();
 		const attributes = this.createAttributes(tags);
 
+		const dataPoint: DataPoint = {
+			timeUnixNano,
+			attributes,
+		};
+
+		if (useDouble) {
+			dataPoint.asDouble = value;
+		} else {
+			dataPoint.asInt = Math.round(value);
+		}
+
 		const gaugeMetric: GaugeMetric = {
 			name,
-			unit: "%",
+			unit,
 			gauge: {
-				dataPoints: [
-					{
-						asInt: value,
-						timeUnixNano,
-						attributes,
-					},
-				],
+				dataPoints: [dataPoint],
 			},
 		};
 
 		return gaugeMetric;
 	}
 
-	async sendSumMetric({
-		name,
-		value,
-		tags,
-	}: MetadataToBuildMetric): Promise<void> {
-		const sumMetric: SumMetric = this.buildSumMetric({
-			name,
-			value,
-			tags,
-		});
+	async sendSumMetric(metadata: MetadataToBuildMetric): Promise<void> {
+		const sumMetric: SumMetric = this.buildSumMetric(metadata);
 
 		try {
 			await this.sendMetrics<SumMetric>([sumMetric]);
@@ -164,19 +186,11 @@ class MetricsClient {
 		}
 	}
 
-	async sendGaugeMetric({
-		name,
-		value,
-		tags,
-	}: MetadataToBuildMetric): Promise<void> {
-		const gaugeMetric: GaugeMetric = this.buildGaugeMetric({
-			name,
-			value,
-			tags,
-		});
+	async sendGaugeMetric(metadata: MetadataToBuildMetric): Promise<void> {
+		const gaugeMetric: GaugeMetric = this.buildGaugeMetric(metadata);
 
 		try {
-			await this.sendMetrics([gaugeMetric]);
+			await this.sendMetrics<GaugeMetric>([gaugeMetric]);
 		} catch (error) {
 			console.error("Error sending gauge metric:", error);
 			throw error;
@@ -211,9 +225,9 @@ class MetricsClient {
 			});
 
 			if (!response.ok) {
-				throw new Error(
-					`Failed to send metrics: ${response.statusText}`
-				);
+				const responseText = await response.text();
+
+				throw new Error(`Response not OK: ${responseText}`);
 			}
 		} catch (error) {
 			console.error("Error sending metrics:", error);

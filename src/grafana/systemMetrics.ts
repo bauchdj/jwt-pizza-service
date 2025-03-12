@@ -1,9 +1,9 @@
 import os from "os";
 import { MetricBatcher } from "../utils/metricBatcher";
 import metrics from "./metric";
+import { metricConfig } from "./metricConfig";
 
 interface SystemMetric {
-	name: string;
 	value: number;
 	type: "cpu" | "memory";
 }
@@ -52,15 +52,17 @@ class SystemMetricsCollector {
 				// Build gauge metrics for each system metric
 				const gaugeMetrics = Object.values(latestMetrics).map((item) =>
 					metrics.buildGaugeMetric({
-						name: `system_${item.type}_usage`,
+						name: "system_usage",
 						value: item.value,
-						tags: { unit: "percentage" },
+						unit: "percent",
+						tags: { type: item.type },
+						useDouble: true, // Use double for decimal percentages
 					})
 				);
 
 				await metrics.sendMetrics(gaugeMetrics);
 			},
-			60000 // Send every minute
+			{ intervalMs: metricConfig.batchIntervalMs }
 		);
 	}
 
@@ -69,23 +71,21 @@ class SystemMetricsCollector {
 			return; // Already started
 		}
 
-		// Collect metrics every 10 seconds
+		// Collect metrics using configured interval
 		this.collectionInterval = setInterval(() => {
 			const cpuUsage = getCPUUsage();
 			const memoryUsage = getMemoryUsage();
 
 			this.batcher.push({
-				name: "cpu_usage",
 				value: cpuUsage,
 				type: "cpu",
 			});
 
 			this.batcher.push({
-				name: "memory_usage",
 				value: memoryUsage,
 				type: "memory",
 			});
-		}, 10000); // Collect every 10 seconds
+		}, metricConfig.collectionIntervalMs);
 	}
 
 	stop(): void {
@@ -93,10 +93,12 @@ class SystemMetricsCollector {
 			clearInterval(this.collectionInterval);
 			this.collectionInterval = null;
 		}
+
+		this.batcher.stop();
 	}
 }
 
 // Export a singleton instance
 const systemMetrics = new SystemMetricsCollector();
 
-export const startSystemMetricsCollection = () => systemMetrics.start();
+export default systemMetrics;

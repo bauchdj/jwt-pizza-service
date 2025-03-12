@@ -4,7 +4,7 @@ import config from "../config";
 import { db } from "../database/database";
 import { asyncHandler, StatusCodeError } from "../endpointHelper";
 import {
-	pushLoginMetricFailed,
+	pushLoginMetricFailure,
 	pushLoginMetricSuccess,
 	sendActiveUsersCount,
 } from "../grafana/authMetrics";
@@ -122,7 +122,7 @@ authRouter.post(
 		const { name, email, password } = req.body;
 
 		if (!name || !email || !password) {
-			void pushLoginMetricFailed();
+			void pushLoginMetricFailure();
 
 			return res
 				.status(400)
@@ -144,7 +144,7 @@ authRouter.post(
 			res.json({ user, token });
 		} catch (error: unknown) {
 			if (error instanceof StatusCodeError) {
-				void pushLoginMetricFailed();
+				void pushLoginMetricFailure();
 
 				return res
 					.status(error.statusCode)
@@ -170,7 +170,7 @@ authRouter.put(
 
 			res.json({ user, token });
 		} catch (error: unknown) {
-			void pushLoginMetricFailed();
+			void pushLoginMetricFailure();
 
 			if (error instanceof StatusCodeError) {
 				res.status(error.statusCode).json({ message: error.message });

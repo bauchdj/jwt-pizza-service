@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { MetricBatcher } from "../utils/metricBatcher";
 import metrics from "./metric";
+import { metricConfig } from "./metricConfig";
 
 interface RequestMetric {
 	method: string;
@@ -10,26 +11,28 @@ interface RequestMetric {
 // Create a batcher for request metrics
 const requestBatcher = new MetricBatcher<RequestMetric>(
 	async (items: RequestMetric[]) => {
-		// Group and sum by HTTP method
+		// Group by method and sum values
 		const methodCounts = items.reduce((acc, item) => {
 			acc[item.method] = (acc[item.method] || 0) + item.value;
 
 			return acc;
 		}, {} as Record<string, number>);
 
-		// Build metrics for each HTTP method
+		// Build sum metrics for each HTTP method
 		const methodMetrics = Object.entries(methodCounts).map(
 			([method, count]) =>
 				metrics.buildSumMetric({
 					name: "http_requests",
 					value: count,
+					unit: "count",
 					tags: { method },
+					useDouble: false, // Use integer for request counts
 				})
 		);
 
 		await metrics.sendMetrics(methodMetrics);
 	},
-	60000 // Send every minute
+	{ intervalMs: metricConfig.batchIntervalMs }
 );
 
 // Middleware to track HTTP methods
@@ -38,10 +41,6 @@ export function requestMetricsMiddleware(
 	res: Response,
 	next: NextFunction
 ) {
-	requestBatcher.push({
-		method: req.method,
-		value: 1,
-	});
-
+	requestBatcher.push({ method: req.method, value: 1 });
 	next();
 }

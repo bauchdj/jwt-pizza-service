@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { MetricBatcher } from "../utils/metricBatcher";
 import metrics from "./metric";
+import { metricConfig } from "./metricConfig";
 
 interface LatencyMetric {
 	route: string;
@@ -10,13 +11,13 @@ interface LatencyMetric {
 }
 
 interface LatencyStats {
+	route: string;
+	method: string;
+	endpointId?: string;
 	count: number;
 	totalLatency: number;
 	maxLatency: number;
 	minLatency: number;
-	method: string;
-	route: string;
-	endpointId?: string;
 }
 
 class LatencyMetricsProcessor {
@@ -27,7 +28,7 @@ class LatencyMetricsProcessor {
 	}
 
 	private static getRouteFromRequest(req: Request): string {
-		return req.route?.path || req.path || "unknown";
+		return req.route ? req.route.path : req.path;
 	}
 
 	private static createLatencyMetric(
@@ -40,23 +41,27 @@ class LatencyMetricsProcessor {
 			route,
 			method,
 			latencyMs,
-			...(endpointId && { endpointId }),
+			endpointId,
 		};
 	}
 
-	private static aggregateLatencyStats(items: LatencyMetric[]): Record<string, LatencyStats> {
+	private static aggregateLatencyStats(
+		items: LatencyMetric[]
+	): Record<string, LatencyStats> {
 		return items.reduce((acc, item) => {
-			const key = item.endpointId || `${item.method}:${item.route}`;
+			const key = `${item.method}:${item.route}${
+				item.endpointId ? `:${item.endpointId}` : ""
+			}`;
 
 			if (!acc[key]) {
 				acc[key] = {
+					route: item.route,
+					method: item.method,
+					endpointId: item.endpointId,
 					count: 0,
 					totalLatency: 0,
-					maxLatency: 0,
+					maxLatency: -Infinity,
 					minLatency: Infinity,
-					method: item.method,
-					route: item.route,
-					endpointId: item.endpointId,
 				};
 			}
 
@@ -77,32 +82,40 @@ class LatencyMetricsProcessor {
 		const tags = {
 			method: stats.method,
 			route: stats.route,
-			unit: "ms",
-			...(stats.endpointId && { endpoint: stats.endpointId }),
+			...(stats.endpointId && { endpoint_id: stats.endpointId }),
 		};
 
 		return [
 			metrics.buildGaugeMetric({
 				name: "request_latency_avg",
 				value: avgLatency,
+				unit: "ms",
 				tags,
+				useDouble: true,
 			}),
 			metrics.buildGaugeMetric({
 				name: "request_latency_max",
 				value: stats.maxLatency,
+				unit: "ms",
 				tags,
+				useDouble: true,
 			}),
 			metrics.buildGaugeMetric({
 				name: "request_latency_min",
 				value: stats.minLatency,
+				unit: "ms",
 				tags,
+				useDouble: true,
 			}),
 		];
 	}
 
 	static async processLatencyMetrics(items: LatencyMetric[]) {
 		const stats = this.aggregateLatencyStats(items);
-		const latencyMetrics = Object.values(stats).flatMap(this.buildMetricsFromStats);
+
+		const latencyMetrics = Object.values(stats).flatMap(
+			this.buildMetricsFromStats
+		);
 
 		await metrics.sendMetrics(latencyMetrics);
 	}
@@ -132,11 +145,12 @@ class LatencyMetricsProcessor {
 
 const latencyBatcher = new MetricBatcher<LatencyMetric>(
 	LatencyMetricsProcessor.processLatencyMetrics.bind(LatencyMetricsProcessor),
-	60000 // Send every minute
+	{ intervalMs: metricConfig.batchIntervalMs }
 );
 
 // General latency middleware
-export const latencyMetricsMiddleware = LatencyMetricsProcessor.createLatencyMiddleware();
+export const latencyMetricsMiddleware =
+	LatencyMetricsProcessor.createLatencyMiddleware();
 
 // Create endpoint-specific latency middleware
 export const createEndpointLatencyMiddleware = (endpointId: string) =>

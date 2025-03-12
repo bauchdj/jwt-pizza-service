@@ -1,5 +1,6 @@
 import { MetricBatcher } from "../utils/metricBatcher";
 import metrics from "./metric";
+import { metricConfig } from "./metricConfig";
 
 interface OrderMetric {
 	type: "sold" | "failed" | "revenue";
@@ -21,20 +22,24 @@ const orderBatcher = new MetricBatcher<OrderMetric>(
 				return metrics.buildGaugeMetric({
 					name: "order_revenue",
 					value,
-					tags: { unit: "usd" },
+					unit: "usd",
+					tags: { type },
+					useDouble: true, // Use double for currency values
 				});
 			}
 
 			return metrics.buildSumMetric({
 				name: `order_${type}`,
 				value,
-				tags: { status: type },
+				unit: "count",
+				tags: { type },
+				useDouble: false, // Use integer for counts
 			});
 		});
 
 		await metrics.sendMetrics(orderMetrics);
 	},
-	60000 // Send every minute
+	{ intervalMs: metricConfig.batchIntervalMs }
 );
 
 export function pushOrderSold() {

@@ -1,9 +1,10 @@
 import { db } from "../database/database";
 import { MetricBatcher } from "../utils/metricBatcher";
 import metrics from "./metric";
+import { metricConfig } from "./metricConfig";
 
 interface LoginMetric {
-	status: string;
+	status: "success" | "failed";
 	value: number;
 }
 
@@ -21,28 +22,34 @@ const loginBatcher = new MetricBatcher<LoginMetric>(
 			0
 		);
 
-		const successMetric = metrics.buildSumMetric({
-			name: "auth_login",
-			value: successCount,
-			tags: { status: "success" },
-		});
+		// Build sum metrics for login attempts
+		const loginMetrics = [
+			metrics.buildSumMetric({
+				name: "login_attempts",
+				value: successCount,
+				unit: "count",
+				tags: { status: "success" },
+				useDouble: false, // Use integer for counts
+			}),
+			metrics.buildSumMetric({
+				name: "login_attempts",
+				value: failureCount,
+				unit: "count",
+				tags: { status: "failed" },
+				useDouble: false, // Use integer for counts
+			}),
+		];
 
-		const failureMetric = metrics.buildSumMetric({
-			name: "auth_login",
-			value: failureCount,
-			tags: { status: "failed" },
-		});
-
-		await metrics.sendMetrics([successMetric, failureMetric]);
+		await metrics.sendMetrics(loginMetrics);
 	},
-	60000 // Send every minute
+	{ intervalMs: metricConfig.batchIntervalMs }
 );
 
 export function pushLoginMetricSuccess() {
 	loginBatcher.push({ status: "success", value: 1 });
 }
 
-export function pushLoginMetricFailed() {
+export function pushLoginMetricFailure() {
 	loginBatcher.push({ status: "failed", value: 1 });
 }
 
@@ -51,6 +58,7 @@ export async function sendActiveUsersCount() {
 
 	await metrics.sendSumMetric({
 		name: "active_users",
+		unit: "count",
 		value: activeUsers,
 	});
 }
