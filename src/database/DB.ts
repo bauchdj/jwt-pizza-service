@@ -251,6 +251,22 @@ class DB {
 		}
 	}
 
+	async getActiveUsersCount(): Promise<number> {
+		const connection = await this.getConnection();
+
+		try {
+			const result = await this.query<mysql.RowDataPacket[]>(
+				connection,
+				`SELECT COUNT(DISTINCT userId) as count FROM auth`,
+				[]
+			);
+
+			return result[0]?.count || 0;
+		} finally {
+			this.setCloseConnectionTimeout();
+		}
+	}
+
 	async getOrders(
 		user: User,
 		page = 1

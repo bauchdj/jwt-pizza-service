@@ -3,6 +3,11 @@ import jwt from "jsonwebtoken";
 import config from "../config";
 import { db } from "../database/database";
 import { asyncHandler, StatusCodeError } from "../endpointHelper";
+import {
+	sendActiveUsersCount,
+	sendLoginMetricFailed,
+	sendLoginMetricSuccess,
+} from "../grafana/authMetrics";
 import { Role, RoleValueType, User } from "../model/model";
 import { ExtendedRouter, RequestUser } from "./RouterModels";
 
@@ -117,6 +122,8 @@ authRouter.post(
 		const { name, email, password } = req.body;
 
 		if (!name || !email || !password) {
+			void sendLoginMetricFailed();
+
 			return res
 				.status(400)
 				.json({ message: "name, email, and password are required" });
@@ -132,9 +139,13 @@ authRouter.post(
 
 			const token = await setAuth(user);
 
+			void sendLoginMetricSuccess();
+
 			res.json({ user, token });
 		} catch (error: unknown) {
 			if (error instanceof StatusCodeError) {
+				void sendLoginMetricFailed();
+
 				return res
 					.status(error.statusCode)
 					.json({ message: error.message });
@@ -150,10 +161,23 @@ authRouter.put(
 	"/",
 	asyncHandler(async (req: Request, res: Response) => {
 		const { email, password } = req.body;
-		const user = await db.getUser(email, password);
-		const token = await setAuth(user);
 
-		res.json({ user, token });
+		try {
+			const user = await db.getUser(email, password);
+			const token = await setAuth(user);
+
+			void sendLoginMetricSuccess();
+
+			res.json({ user, token });
+		} catch (error: unknown) {
+			void sendLoginMetricFailed();
+
+			if (error instanceof StatusCodeError) {
+				res.status(error.statusCode).json({ message: error.message });
+			}
+
+			throw error;
+		}
 	})
 );
 
@@ -190,6 +214,7 @@ async function setAuth(user: User): Promise<string> {
 	const token = jwt.sign(user, config.jwtSecret);
 
 	await db.loginUser(user.id!, token);
+	void sendActiveUsersCount();
 
 	return token;
 }
@@ -199,6 +224,7 @@ async function clearAuth(req: AuthenticatedRequest) {
 
 	if (token) {
 		await db.logoutUser(token);
+		void sendActiveUsersCount();
 	}
 }
 
