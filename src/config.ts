@@ -16,4 +16,9 @@ export default {
 		url: config.factory.url,
 		apiKey: config.factory.apiKey,
 	},
+	grafana: {
+		source: config.metrics.source,
+		url: config.metrics.url,
+		apiKey: config.metrics.apiKey,
+	},
 };
