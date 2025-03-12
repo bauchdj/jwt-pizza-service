@@ -1,7 +1,7 @@
 import { db } from "../database/database";
 import { MetricBatcher } from "../utils/metricBatcher";
-import metrics from "./metric";
 import { metricConfig } from "./metricConfig";
+import metrics from "./metrics";
 
 interface LoginMetric {
 	status: "success" | "failed";
@@ -11,6 +11,7 @@ interface LoginMetric {
 // Create a batcher for login metrics
 const loginBatcher = new MetricBatcher<LoginMetric>(
 	async (items: LoginMetric[]) => {
+		// TODO: default to value: 0 for each metric
 		// Sum up all success and failure counts
 		const successCount = items.reduce(
 			(sum, item) => (item.status === "success" ? sum + item.value : sum),

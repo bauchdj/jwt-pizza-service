@@ -1,7 +1,7 @@
 import os from "os";
 import { MetricBatcher } from "../utils/metricBatcher";
-import metrics from "./metric";
 import { metricConfig } from "./metricConfig";
+import metrics from "./metrics";
 
 interface SystemMetric {
 	value: number;
@@ -40,6 +40,7 @@ class SystemMetricsCollector {
 	constructor() {
 		this.batcher = new MetricBatcher<SystemMetric>(
 			async (items: SystemMetric[]) => {
+				// TODO: default to value: 0 for each metric
 				// Group metrics by type and get latest values
 				const latestMetrics = items.reduce((acc, item) => {
 					if (!acc[item.type] || acc[item.type].value < item.value) {

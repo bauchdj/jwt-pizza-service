@@ -2,12 +2,12 @@ import express, { Response } from "express";
 import config from "../config";
 import { db } from "../database/database";
 import { asyncHandler, StatusCodeError } from "../endpointHelper";
-import { createEndpointLatencyMiddleware } from "../grafana/latencyMetrics";
+import { createEndpointLatencyMiddleware } from "../metrics/latencyMetrics";
 import {
 	pushOrderFailed,
 	pushOrderRevenue,
 	pushOrderSold,
-} from "../grafana/orderMetrics";
+} from "../metrics/orderMetrics";
 import { DinerOrder, Role } from "../model/model";
 import { authRouter } from "./authRouter";
 import { ExtendedRouter, UserRequest } from "./RouterModels";

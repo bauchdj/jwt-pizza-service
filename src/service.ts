@@ -1,9 +1,9 @@
 import express, { NextFunction, Request, Response } from "express";
 import config from "./config";
 import { StatusCodeError } from "./endpointHelper";
-import { latencyMetricsMiddleware } from "./grafana/latencyMetrics";
-import { requestMetricsMiddleware } from "./grafana/requestMetrics";
-import systemMetrics from "./grafana/systemMetrics";
+import { latencyMetricsMiddleware } from "./metrics/latencyMetrics";
+import { requestMetricsMiddleware } from "./metrics/requestMetrics";
+import systemMetrics from "./metrics/systemMetrics";
 import { authRouter, setAuthUser } from "./routes/authRouter";
 import franchiseRouter from "./routes/franchiseRouter";
 import orderRouter from "./routes/orderRouter";

@@ -7,7 +7,7 @@ import {
 	pushLoginMetricFailure,
 	pushLoginMetricSuccess,
 	sendActiveUsersCount,
-} from "../grafana/authMetrics";
+} from "../metrics/authMetrics";
 import { Role, RoleValueType, User } from "../model/model";
 import { ExtendedRouter, RequestUser } from "./RouterModels";
 

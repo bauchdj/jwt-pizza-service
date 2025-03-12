@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { MetricBatcher } from "../utils/metricBatcher";
-import metrics from "./metric";
 import { metricConfig } from "./metricConfig";
+import metrics from "./metrics";
 
 interface LatencyMetric {
 	route: string;
@@ -87,30 +87,31 @@ class LatencyMetricsProcessor {
 
 		return [
 			metrics.buildGaugeMetric({
-				name: "request_latency_avg",
+				name: "request_latency",
 				value: avgLatency,
 				unit: "ms",
-				tags,
+				tags: { ...tags, type: "avg" },
 				useDouble: true,
 			}),
 			metrics.buildGaugeMetric({
-				name: "request_latency_max",
+				name: "request_latency",
 				value: stats.maxLatency,
 				unit: "ms",
-				tags,
+				tags: { ...tags, type: "max" },
 				useDouble: true,
 			}),
 			metrics.buildGaugeMetric({
-				name: "request_latency_min",
+				name: "request_latency",
 				value: stats.minLatency,
 				unit: "ms",
-				tags,
+				tags: { ...tags, type: "min" },
 				useDouble: true,
 			}),
 		];
 	}
 
 	static async processLatencyMetrics(items: LatencyMetric[]) {
+		// TODO: default to value: 0 for each metric
 		const stats = this.aggregateLatencyStats(items);
 
 		const latencyMetrics = Object.values(stats).flatMap(

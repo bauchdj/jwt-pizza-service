@@ -1,6 +1,6 @@
 import { MetricBatcher } from "../utils/metricBatcher";
-import metrics from "./metric";
 import { metricConfig } from "./metricConfig";
+import metrics from "./metrics";
 
 interface OrderMetric {
 	type: "sold" | "failed" | "revenue";
@@ -9,6 +9,7 @@ interface OrderMetric {
 
 const orderBatcher = new MetricBatcher<OrderMetric>(
 	async (items: OrderMetric[]) => {
+		// TODO: default to value: 0 for each metric
 		// Group metrics by type and sum values
 		const typeSums = items.reduce((acc, item) => {
 			acc[item.type] = (acc[item.type] || 0) + item.value;
@@ -18,18 +19,20 @@ const orderBatcher = new MetricBatcher<OrderMetric>(
 
 		// Build metrics for each type
 		const orderMetrics = Object.entries(typeSums).map(([type, value]) => {
+			const name = "order";
+
 			if (type === "revenue") {
 				return metrics.buildGaugeMetric({
-					name: "order_revenue",
+					name,
 					value,
-					unit: "usd",
+					unit: "bitcoin",
 					tags: { type },
 					useDouble: true, // Use double for currency values
 				});
 			}
 
 			return metrics.buildSumMetric({
-				name: `order_${type}`,
+				name,
 				value,
 				unit: "count",
 				tags: { type },
