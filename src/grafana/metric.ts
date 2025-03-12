@@ -35,7 +35,7 @@ interface ResourceMetrics<T extends Metric> {
 	}>;
 }
 
-interface Metric {
+export interface Metric {
 	name: string;
 	unit?: string;
 	tags?: Record<string, string>;

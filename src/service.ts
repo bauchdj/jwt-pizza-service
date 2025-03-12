@@ -1,6 +1,8 @@
 import express, { NextFunction, Request, Response } from "express";
 import config from "./config";
 import { StatusCodeError } from "./endpointHelper";
+import { requestMetricsMiddleware } from "./grafana/requestMetrics";
+import { startSystemMetricsCollection } from "./grafana/systemMetrics";
 import { authRouter, setAuthUser } from "./routes/authRouter";
 import franchiseRouter from "./routes/franchiseRouter";
 import orderRouter from "./routes/orderRouter";
@@ -8,7 +10,10 @@ import version from "./version.json";
 
 const app = express();
 
+startSystemMetricsCollection();
+
 app.use(express.json());
+app.use(requestMetricsMiddleware);
 app.use(setAuthUser);
 
 app.use((req: Request, res: Response, next: NextFunction) => {
