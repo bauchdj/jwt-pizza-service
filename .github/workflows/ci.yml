@@ -59,6 +59,11 @@ jobs:
                     "factory": {
                       "url": "https://pizza-factory.cs329.click",
                       "apiKey": "${{ secrets.FACTORY_API_KEY }}"
+                    },
+                    "metrics": {
+                        "source": "${{ github.repository }}",
+                        "url": "${{ secrets.METRICS_URL }}",
+                        "apiKey": "${{ secrets.METRICS_API_KEY }}"
                     }
                   }
                   EOF
