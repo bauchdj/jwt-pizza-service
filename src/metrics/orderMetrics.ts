@@ -1,17 +1,19 @@
-import { MetricBatcher } from "../utils/metricBatcher";
+import { MetricBatcher, type MetricBatcherQueueItem } from "./metricBatcher";
 import { metricConfig } from "./metricConfig";
 import metrics, { GaugeMetric, SumMetric } from "./metrics";
 
-interface OrderMetric {
+interface OrderMetric extends MetricBatcherQueueItem {
 	type: "sold" | "failed" | "revenue";
-	value: number;
 }
 
 const orderBatcher = new MetricBatcher<OrderMetric, SumMetric | GaugeMetric>(
 	async (items: OrderMetric[]) => {
 		// Group metrics by type and sum values
 		const typeSums = items.reduce((acc, item) => {
-			acc[item.type] = (acc[item.type] || 0) + item.value;
+			const prevTotal = acc[item.type] || 0;
+			const total = prevTotal + item.value;
+
+			acc[item.type] = total;
 
 			return acc;
 		}, {} as Record<string, number>);
@@ -45,13 +47,19 @@ const orderBatcher = new MetricBatcher<OrderMetric, SumMetric | GaugeMetric>(
 );
 
 export function pushOrderSold() {
-	orderBatcher.push({ type: "sold", value: 1 });
+	const type = "sold";
+
+	orderBatcher.push({ id: type, type, value: 1 });
 }
 
 export function pushOrderFailed() {
-	orderBatcher.push({ type: "failed", value: 1 });
+	const type = "failed";
+
+	orderBatcher.push({ id: type, type, value: 1 });
 }
 
 export function pushOrderRevenue(amount: number) {
-	orderBatcher.push({ type: "revenue", value: amount });
+	const type = "revenue";
+
+	orderBatcher.push({ id: type, type, value: amount });
 }

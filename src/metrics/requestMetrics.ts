@@ -1,11 +1,10 @@
 import { NextFunction, Request, Response } from "express";
-import { MetricBatcher } from "../utils/metricBatcher";
+import { MetricBatcher, type MetricBatcherQueueItem } from "./metricBatcher";
 import { metricConfig } from "./metricConfig";
 import metrics, { SumMetric } from "./metrics";
 
-interface RequestMetric {
+interface RequestMetric extends MetricBatcherQueueItem {
 	method: string;
-	value: number;
 }
 
 // Create a batcher for request metrics
@@ -13,7 +12,10 @@ const requestBatcher = new MetricBatcher<RequestMetric, SumMetric>(
 	async (items: RequestMetric[]) => {
 		// Group by method and sum values
 		const methodCounts = items.reduce((acc, item) => {
-			acc[item.method] = (acc[item.method] || 0) + item.value;
+			const prevTotal = acc[item.method] || 0;
+			const total = prevTotal + item.value;
+
+			acc[item.method] = total;
 
 			return acc;
 		}, {} as Record<string, number>);
@@ -41,6 +43,6 @@ export function requestMetricsMiddleware(
 	res: Response,
 	next: NextFunction
 ) {
-	requestBatcher.push({ method: req.method, value: 1 });
+	requestBatcher.push({ id: req.method, method: req.method, value: 1 });
 	next();
 }

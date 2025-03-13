@@ -42,12 +42,15 @@ export interface Metric {
 	tags?: Record<string, string>;
 }
 
-interface MetadataToBuildMetric {
+export interface MetadataToBuildMetric extends MetadataBase {
 	name: string;
-	value: number;
 	unit: string;
 	tags?: Record<string, string>;
 	useDouble?: boolean;
+}
+
+export interface MetadataBase {
+	value: number;
 }
 
 class MetricsClient {
@@ -212,8 +215,6 @@ class MetricsClient {
 	private async postMetrics<T extends Metric>(
 		resourceMetrics: ResourceMetrics<T>
 	): Promise<void> {
-		console.dir(resourceMetrics, { depth: null });
-
 		try {
 			const response = await fetch(this.endpoint, {
 				method: "POST",

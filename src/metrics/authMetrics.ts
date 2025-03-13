@@ -1,11 +1,10 @@
 import { db } from "../database/database";
-import { MetricBatcher } from "../utils/metricBatcher";
+import { MetricBatcher, type MetricBatcherQueueItem } from "./metricBatcher";
 import { metricConfig } from "./metricConfig";
 import metrics, { SumMetric } from "./metrics";
 
-interface LoginMetric {
+interface LoginMetric extends MetricBatcherQueueItem {
 	status: "success" | "failed";
-	value: number;
 }
 
 // Create a batcher for login metrics
@@ -46,11 +45,15 @@ const loginBatcher = new MetricBatcher<LoginMetric, SumMetric>(
 );
 
 export function pushLoginMetricSuccess() {
-	loginBatcher.push({ status: "success", value: 1 });
+	const status = "success";
+
+	loginBatcher.push({ id: status, status, value: 1 });
 }
 
 export function pushLoginMetricFailure() {
-	loginBatcher.push({ status: "failed", value: 1 });
+	const status = "failed";
+
+	loginBatcher.push({ id: status, status, value: 1 });
 }
 
 export async function sendActiveUsersCount() {

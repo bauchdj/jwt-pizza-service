@@ -1,16 +1,16 @@
 import { NextFunction, Request, Response } from "express";
-import { MetricBatcher } from "../utils/metricBatcher";
+import { MetricBatcher, type MetricBatcherQueueItem } from "./metricBatcher";
 import { metricConfig } from "./metricConfig";
 import metrics, { GaugeMetric } from "./metrics";
 
-interface LatencyMetric {
+interface LatencyMetric extends MetricBatcherQueueItem {
 	route: string;
 	method: string;
 	latencyMs: number;
 	endpointId?: string;
 }
 
-interface LatencyStats {
+interface LatencyStats extends MetricBatcherQueueItem {
 	route: string;
 	method: string;
 	endpointId?: string;
@@ -38,6 +38,8 @@ class LatencyMetricsProcessor {
 		endpointId?: string
 	): LatencyMetric {
 		return {
+			id: `${method}:${route}${endpointId ? `:${endpointId}` : ""}`,
+			value: latencyMs,
 			route,
 			method,
 			latencyMs,
@@ -49,12 +51,12 @@ class LatencyMetricsProcessor {
 		items: LatencyMetric[]
 	): Record<string, LatencyStats> {
 		return items.reduce((acc, item) => {
-			const key = `${item.method}:${item.route}${
-				item.endpointId ? `:${item.endpointId}` : ""
-			}`;
+			const key = `${item.id}`;
 
 			if (!acc[key]) {
 				acc[key] = {
+					id: item.id,
+					value: 0,
 					route: item.route,
 					method: item.method,
 					endpointId: item.endpointId,

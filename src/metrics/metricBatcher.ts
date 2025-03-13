@@ -1,4 +1,8 @@
-import metrics, { type Metric } from "../metrics/metrics";
+import metrics, { type MetadataBase, type Metric } from "./metrics";
+
+export interface MetricBatcherQueueItem extends MetadataBase {
+	id: string;
+}
 
 type MetricSender<T, U extends Metric> = (items: T[]) => Promise<U[]>;
 
@@ -7,11 +11,15 @@ class BatcherRegistry {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	private static batchers: MetricBatcher<any, any>[] = [];
 
-	static register<T, U extends Metric>(batcher: MetricBatcher<T, U>): void {
+	static register<T extends MetricBatcherQueueItem, U extends Metric>(
+		batcher: MetricBatcher<T, U>
+	): void {
 		this.batchers.push(batcher);
 	}
 
-	static unregister<T, U extends Metric>(batcher: MetricBatcher<T, U>): void {
+	static unregister<T extends MetricBatcherQueueItem, U extends Metric>(
+		batcher: MetricBatcher<T, U>
+	): void {
 		const index = this.batchers.indexOf(batcher);
 
 		if (index > -1) {
@@ -29,8 +37,9 @@ interface MetricBatcherConfig {
 	intervalMs?: number;
 }
 
-export class MetricBatcher<T, U extends Metric> {
+export class MetricBatcher<T extends MetricBatcherQueueItem, U extends Metric> {
 	private queue: T[] = [];
+	private previousQueue: T[] = [];
 	private interval: NodeJS.Timeout;
 	private readonly getBatchOfMetrics: MetricSender<T, U>;
 
@@ -49,17 +58,36 @@ export class MetricBatcher<T, U extends Metric> {
 		this.queue.push(item);
 	}
 
+	private fillMissingMetrics(): T[] {
+		const currentIds = new Set(this.queue.map((item) => item.id));
+		const previousIds = new Set(this.previousQueue.map((item) => item.id));
+
+		const missingIds = new Set(
+			[...previousIds].filter((id) => !currentIds.has(id))
+		);
+
+		const missingItems: T[] = this.previousQueue
+			.filter((item) => missingIds.has(item.id))
+			.map((item) => ({
+				...item,
+				value: 0,
+			}));
+
+		return [...this.queue, ...missingItems];
+	}
+
 	async flush(): Promise<void> {
-		if (this.queue.length === 0) {
+		const filledQueue = this.fillMissingMetrics();
+
+		this.previousQueue = this.queue;
+
+		if (filledQueue.length === 0) {
 			return;
 		}
 
-		console.dir(this.queue, { depth: null });
-
-		const batchOfMetrics = await this.getBatchOfMetrics(this.queue);
+		const batchOfMetrics = await this.getBatchOfMetrics(filledQueue);
 
 		await metrics.sendMetrics(batchOfMetrics);
-
 		this.queue = [];
 	}
 

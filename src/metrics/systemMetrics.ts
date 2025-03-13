@@ -1,11 +1,12 @@
 import os from "os";
-import { MetricBatcher } from "../utils/metricBatcher";
+import { MetricBatcher, type MetricBatcherQueueItem } from "./metricBatcher";
 import { metricConfig } from "./metricConfig";
 import metrics, { GaugeMetric } from "./metrics";
 
-interface SystemMetric {
-	value: number;
-	type: "cpu" | "memory";
+type SystemMetricType = "cpu" | "memory";
+
+interface SystemMetric extends MetricBatcherQueueItem {
+	type: SystemMetricType;
 }
 
 function getCPUUsage(): number {
@@ -76,14 +77,20 @@ class SystemMetricsCollector {
 			const cpuUsage = getCPUUsage();
 			const memoryUsage = getMemoryUsage();
 
-			this.batcher.push({
-				value: cpuUsage,
-				type: "cpu",
-			});
+			let type: SystemMetricType = "cpu";
 
 			this.batcher.push({
+				id: type,
+				value: cpuUsage,
+				type,
+			});
+
+			type = "memory";
+
+			this.batcher.push({
+				id: type,
 				value: memoryUsage,
-				type: "memory",
+				type,
 			});
 		}, metricConfig.collectionIntervalMs);
 	}
