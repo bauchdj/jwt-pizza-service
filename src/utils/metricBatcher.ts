@@ -1,15 +1,17 @@
-type MetricSender<T> = (items: T[]) => Promise<void>;
+import metrics, { type Metric } from "../metrics/metrics";
+
+type MetricSender<T, U extends Metric> = (items: T[]) => Promise<U[]>;
 
 // Keep track of active batchers by type
 class BatcherRegistry {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	private static batchers: MetricBatcher<any>[] = [];
+	private static batchers: MetricBatcher<any, any>[] = [];
 
-	static register<T>(batcher: MetricBatcher<T>): void {
+	static register<T, U extends Metric>(batcher: MetricBatcher<T, U>): void {
 		this.batchers.push(batcher);
 	}
 
-	static unregister<T>(batcher: MetricBatcher<T>): void {
+	static unregister<T, U extends Metric>(batcher: MetricBatcher<T, U>): void {
 		const index = this.batchers.indexOf(batcher);
 
 		if (index > -1) {
@@ -27,15 +29,18 @@ interface MetricBatcherConfig {
 	intervalMs?: number;
 }
 
-export class MetricBatcher<T> {
+export class MetricBatcher<T, U extends Metric> {
 	private queue: T[] = [];
 	private interval: NodeJS.Timeout;
-	private readonly sender: MetricSender<T>;
+	private readonly getBatchOfMetrics: MetricSender<T, U>;
 
-	constructor(sender: MetricSender<T>, config?: MetricBatcherConfig) {
+	constructor(
+		getBatchOfMetrics: MetricSender<T, U>,
+		config?: MetricBatcherConfig
+	) {
 		const intervalMs = config?.intervalMs ?? 60000; // Default to 1 minute if not specified
 
-		this.sender = sender;
+		this.getBatchOfMetrics = getBatchOfMetrics;
 		this.interval = setInterval(() => this.flush(), intervalMs);
 		BatcherRegistry.register(this);
 	}
@@ -45,9 +50,16 @@ export class MetricBatcher<T> {
 	}
 
 	async flush(): Promise<void> {
-		if (this.queue.length === 0) return;
+		if (this.queue.length === 0) {
+			return;
+		}
 
-		await this.sender(this.queue);
+		console.dir(this.queue, { depth: null });
+
+		const batchOfMetrics = await this.getBatchOfMetrics(this.queue);
+
+		await metrics.sendMetrics(batchOfMetrics);
+
 		this.queue = [];
 	}
 

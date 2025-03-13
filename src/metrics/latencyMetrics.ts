@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { MetricBatcher } from "../utils/metricBatcher";
 import { metricConfig } from "./metricConfig";
-import metrics from "./metrics";
+import metrics, { GaugeMetric } from "./metrics";
 
 interface LatencyMetric {
 	route: string;
@@ -111,14 +111,13 @@ class LatencyMetricsProcessor {
 	}
 
 	static async processLatencyMetrics(items: LatencyMetric[]) {
-		// TODO: default to value: 0 for each metric
 		const stats = this.aggregateLatencyStats(items);
 
 		const latencyMetrics = Object.values(stats).flatMap(
 			this.buildMetricsFromStats
 		);
 
-		await metrics.sendMetrics(latencyMetrics);
+		return latencyMetrics;
 	}
 
 	static createLatencyMiddleware(endpointId?: string) {
@@ -144,7 +143,7 @@ class LatencyMetricsProcessor {
 	}
 }
 
-const latencyBatcher = new MetricBatcher<LatencyMetric>(
+const latencyBatcher = new MetricBatcher<LatencyMetric, GaugeMetric>(
 	LatencyMetricsProcessor.processLatencyMetrics.bind(LatencyMetricsProcessor),
 	{ intervalMs: metricConfig.batchIntervalMs }
 );

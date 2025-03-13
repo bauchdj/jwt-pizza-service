@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { MetricBatcher } from "../utils/metricBatcher";
 import { metricConfig } from "./metricConfig";
-import metrics from "./metrics";
+import metrics, { SumMetric } from "./metrics";
 
 interface RequestMetric {
 	method: string;
@@ -9,9 +9,8 @@ interface RequestMetric {
 }
 
 // Create a batcher for request metrics
-const requestBatcher = new MetricBatcher<RequestMetric>(
+const requestBatcher = new MetricBatcher<RequestMetric, SumMetric>(
 	async (items: RequestMetric[]) => {
-		// TODO: default to value: 0 for each metric
 		// Group by method and sum values
 		const methodCounts = items.reduce((acc, item) => {
 			acc[item.method] = (acc[item.method] || 0) + item.value;
@@ -31,7 +30,7 @@ const requestBatcher = new MetricBatcher<RequestMetric>(
 				})
 		);
 
-		await metrics.sendMetrics(methodMetrics);
+		return methodMetrics;
 	},
 	{ intervalMs: metricConfig.batchIntervalMs }
 );

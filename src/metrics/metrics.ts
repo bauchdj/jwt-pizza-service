@@ -14,7 +14,7 @@ interface DataPoint {
 	attributes: MetricAttribute[];
 }
 
-interface SumMetric extends Metric {
+export interface SumMetric extends Metric {
 	sum: {
 		dataPoints: DataPoint[];
 		aggregationTemporality: string;
@@ -22,7 +22,7 @@ interface SumMetric extends Metric {
 	};
 }
 
-interface GaugeMetric extends Metric {
+export interface GaugeMetric extends Metric {
 	gauge: {
 		dataPoints: DataPoint[];
 	};

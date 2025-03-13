@@ -1,15 +1,14 @@
 import { MetricBatcher } from "../utils/metricBatcher";
 import { metricConfig } from "./metricConfig";
-import metrics from "./metrics";
+import metrics, { GaugeMetric, SumMetric } from "./metrics";
 
 interface OrderMetric {
 	type: "sold" | "failed" | "revenue";
 	value: number;
 }
 
-const orderBatcher = new MetricBatcher<OrderMetric>(
+const orderBatcher = new MetricBatcher<OrderMetric, SumMetric | GaugeMetric>(
 	async (items: OrderMetric[]) => {
-		// TODO: default to value: 0 for each metric
 		// Group metrics by type and sum values
 		const typeSums = items.reduce((acc, item) => {
 			acc[item.type] = (acc[item.type] || 0) + item.value;
@@ -40,7 +39,7 @@ const orderBatcher = new MetricBatcher<OrderMetric>(
 			});
 		});
 
-		await metrics.sendMetrics(orderMetrics);
+		return orderMetrics;
 	},
 	{ intervalMs: metricConfig.batchIntervalMs }
 );

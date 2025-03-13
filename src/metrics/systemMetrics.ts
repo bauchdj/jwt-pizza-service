@@ -1,7 +1,7 @@
 import os from "os";
 import { MetricBatcher } from "../utils/metricBatcher";
 import { metricConfig } from "./metricConfig";
-import metrics from "./metrics";
+import metrics, { GaugeMetric } from "./metrics";
 
 interface SystemMetric {
 	value: number;
@@ -35,12 +35,11 @@ function getMemoryUsage(): number {
 
 class SystemMetricsCollector {
 	private collectionInterval: NodeJS.Timeout | null = null;
-	private readonly batcher: MetricBatcher<SystemMetric>;
+	private readonly batcher: MetricBatcher<SystemMetric, GaugeMetric>;
 
 	constructor() {
-		this.batcher = new MetricBatcher<SystemMetric>(
+		this.batcher = new MetricBatcher<SystemMetric, GaugeMetric>(
 			async (items: SystemMetric[]) => {
-				// TODO: default to value: 0 for each metric
 				// Group metrics by type and get latest values
 				const latestMetrics = items.reduce((acc, item) => {
 					if (!acc[item.type] || acc[item.type].value < item.value) {
@@ -61,7 +60,7 @@ class SystemMetricsCollector {
 					})
 				);
 
-				await metrics.sendMetrics(gaugeMetrics);
+				return gaugeMetrics;
 			},
 			{ intervalMs: metricConfig.batchIntervalMs }
 		);
