@@ -1,6 +1,7 @@
 import express, { NextFunction, Request, Response } from "express";
 import config from "./config";
 import { StatusCodeError } from "./endpointHelper";
+import logger from "./logging/logger";
 import { latencyMetricsMiddleware } from "./metrics/latencyMetrics";
 import { requestMetricsMiddleware } from "./metrics/requestMetrics";
 import systemMetrics from "./metrics/systemMetrics";
@@ -14,6 +15,7 @@ const app = express();
 app.use(express.json());
 app.use(requestMetricsMiddleware);
 app.use(latencyMetricsMiddleware);
+app.use(logger.httpLogger);
 app.use(setAuthUser);
 
 // Start collecting system metrics
@@ -80,6 +82,8 @@ app.use("*", (req: Request, res: Response) => {
 app.use(
 	(err: StatusCodeError, req: Request, res: Response, next: NextFunction) => {
 		const status = err.statusCode ?? 500;
+
+		logger.unhandledErrorLogger(err);
 
 		res.status(status).json({
 			message: err.message,

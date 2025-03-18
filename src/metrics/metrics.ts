@@ -56,15 +56,18 @@ export interface MetadataBase {
 class MetricsClient {
 	private readonly endpoint: string;
 	private readonly source: string;
+	private readonly userId: string;
 	private readonly apiKey: string;
 
 	constructor(
 		endpoint: string = config.grafana.url,
 		source: string = config.grafana.source,
+		userId: string = config.grafana.userId,
 		apiKey: string = config.grafana.apiKey
 	) {
 		this.endpoint = endpoint;
 		this.source = source;
+		this.userId = userId;
 		this.apiKey = apiKey;
 	}
 
@@ -220,7 +223,7 @@ class MetricsClient {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
-					Authorization: `Bearer ${this.apiKey}`,
+					Authorization: `Bearer ${this.userId}:${this.apiKey}`,
 				},
 				body: JSON.stringify(resourceMetrics),
 			});

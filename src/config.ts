@@ -19,6 +19,13 @@ export default {
 	grafana: {
 		source: config.metrics.source,
 		url: config.metrics.url,
+		userId: config.metrics.userId,
 		apiKey: config.metrics.apiKey,
+	},
+	logging: {
+		source: config.logging.source,
+		url: config.logging.url,
+		userId: config.logging.userId,
+		apiKey: config.logging.apiKey,
 	},
 };

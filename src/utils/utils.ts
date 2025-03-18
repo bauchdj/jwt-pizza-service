@@ -32,3 +32,16 @@ export function generateRandomDatabaseName(): string {
 
 	return result;
 }
+
+export function safelyParseStringOrJSONString(input: string): string | object {
+	try {
+		// Try parsing the string as JSON
+		const parsed = JSON.parse(input);
+
+		// If parsing succeeds, stringify it back to normalize it
+		return parsed;
+	} catch {
+		// If parsing fails, return the original string
+		return input;
+	}
+}

@@ -2,6 +2,7 @@ import express, { Response } from "express";
 import config from "../config";
 import { db } from "../database/database";
 import { asyncHandler, StatusCodeError } from "../endpointHelper";
+import logger from "../logging/logger";
 import { createEndpointLatencyMiddleware } from "../metrics/latencyMetrics";
 import {
 	pushOrderFailed,
@@ -147,21 +148,29 @@ orderRouter.post(
 			void pushOrderSold();
 			void pushOrderRevenue(calculateOrderTotal(orderReqBody));
 
-			const response = await fetch(`${config.factory.url}/api/order`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					authorization: `Bearer ${config.factory.apiKey}`,
+			const orderRequestBody = {
+				diner: {
+					id: req.user.id,
+					name: req.user.name,
+					email: req.user.email,
 				},
-				body: JSON.stringify({
-					diner: {
-						id: req.user.id,
-						name: req.user.name,
-						email: req.user.email,
+				order,
+			};
+
+			const factoryHttpMethod = "POST";
+			const factoryPath = "/api/order";
+
+			const response = await fetch(
+				`${config.factory.url}${factoryPath}`,
+				{
+					method: factoryHttpMethod,
+					headers: {
+						"Content-Type": "application/json",
+						authorization: `Bearer ${config.factory.apiKey}`,
 					},
-					order,
-				}),
-			});
+					body: JSON.stringify(orderRequestBody),
+				}
+			);
 
 			const jsonResponse = await response.json();
 
@@ -178,6 +187,13 @@ orderRouter.post(
 						jsonResponse.reportUrl,
 				});
 			}
+
+			logger.factoryLogger({
+				method: factoryHttpMethod,
+				path: factoryPath,
+				statusCode: response.status,
+				reqBody: JSON.stringify(orderRequestBody),
+			});
 		} catch (error) {
 			void pushOrderFailed();
 

@@ -2,6 +2,7 @@ import argon2 from "argon2";
 import mysql from "mysql2/promise";
 import config from "../config";
 import { StatusCodeError } from "../endpointHelper";
+import logger from "../logging/logger";
 import {
 	DinerOrder,
 	Franchise,
@@ -550,6 +551,11 @@ class DB {
 		sql: string,
 		params?: unknown[]
 	): Promise<T> {
+		logger.dbLogger({
+			query: sql,
+			params,
+		});
+
 		const [rows] = await connection.execute<T>(sql, params);
 
 		return rows;

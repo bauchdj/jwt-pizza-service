@@ -63,7 +63,14 @@ jobs:
                     "metrics": {
                         "source": "${{ github.repository }}",
                         "url": "${{ secrets.METRICS_URL }}",
+                        "userId": "${{ secrets.METRICS_USER_ID }}",
                         "apiKey": "${{ secrets.METRICS_API_KEY }}"
+                    },
+                    "logging": {
+                        "source": "${{ github.repository }}",
+                        "url": "${{ secrets.LOGGING_URL }}",
+                        "userId": "${{ secrets.LOGGING_USER_ID }}",
+                        "apiKey": "${{ secrets.LOGGING_API_KEY }}"
                     }
                   }
                   EOF
